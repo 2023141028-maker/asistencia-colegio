@@ -6,7 +6,7 @@ import {
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
   Upload, Edit, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
-  CalendarRange, Filter
+  CalendarRange, Filter, Sparkles, KeyRound
 } from 'lucide-react';
 
 // Motor oficial de Microsoft Excel (.xlsx)
@@ -21,86 +21,22 @@ const cargarLibreriaExcel = () => {
   });
 };
 
-const USUARIOS_BASE = [
-  { 
-    id: 'dir_1', 
-    usuario: 'director', 
-    clave: 'dir2026', 
-    rol: 'director', 
-    nombre: 'Dirección General',
-    aulasAsignadas: []
-  },
-  { 
-    id: 'aux_1', 
-    usuario: 'auxiliar', 
-    clave: 'aux2026', 
-    rol: 'auxiliar', 
-    nombre: 'Auxiliar de Puerta',
-    aulasAsignadas: []
-  },
-  { 
-    id: 'doc_1', 
-    usuario: 'profesor1', 
-    clave: 'doc2026', 
-    rol: 'docente', 
-    nombre: 'Prof. Carlos Mendoza (Matemáticas)',
-    aulasAsignadas: [
-      { grade: 'PRIMERO', section: 'RESPONSABILIDD' },
-      { grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES' },
-      { grade: 'TERCERO', section: 'CESAR VALLEJO' }
-    ]
-  },
-  { 
-    id: 'doc_2', 
-    usuario: 'docente', 
-    clave: 'doc2026', 
-    rol: 'docente', 
-    nombre: 'Prof. Rosa Huamán (Comunicación)',
-    aulasAsignadas: [
-      { grade: 'PRIMERO', section: 'RESPONSABILIDD' },
-      { grade: 'CUARTO', section: 'NIKOLA TESLA' }
-    ]
-  }
-];
-
-const ESTUDIANTES_INICIALES = [
-  { id: 1, dni: '74125801', name: 'ALVARADO PAUCAR JOSHUA SAMIR', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123451' },
-  { id: 2, dni: '74125802', name: 'ATOCCSA ARANCEL JORAN DAVID', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123452' },
-  { id: 3, dni: '74125803', name: 'AUCAYAURI BERROCAL HENRRY', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123453' },
-  { id: 4, dni: '74125804', name: 'AYUQUE CAHUAYA VICTOR RAUL', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123454' },
-  { id: 5, dni: '74125805', name: 'CAPCHA LLANO JHEREMY JAMPOOL', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123455' },
-  { id: 6, dni: '74125806', name: 'CONCHA SOTO AHIDAN SANTOS', grade: 'PRIMERO', section: 'RESPONSABILIDD', phone: '964123456' },
-  { id: 7, dni: '74125807', name: 'ALFONSO DE LA CRUZ ANGEL GABRIEL', grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES', phone: '964234561' },
-  { id: 8, dni: '74125808', name: 'BARRETO CONDOR KEVIN SMITH', grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES', phone: '964234562' },
-  { id: 9, dni: '74125809', name: 'CARDENAS PAUCAR EDSON LEONEL', grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES', phone: '964234563' },
-  { id: 10, dni: '74125810', name: 'CASAS OSORES JAIRO FABRIZIO', grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES', phone: '964234564' },
-  { id: 11, dni: '74125811', name: 'AGUIRRE QUISPE LUIS ENRIQUE', grade: 'TERCERO', section: 'CESAR VALLEJO', phone: '964345671' },
-  { id: 12, dni: '74125812', name: 'ARROYO MATAMOROS DIEGO ARMANDO', grade: 'TERCERO', section: 'CESAR VALLEJO', phone: '964345672' },
-  { id: 13, dni: '74125813', name: 'CABRERA MEZA JHONATAN', grade: 'TERCERO', section: 'CESAR VALLEJO', phone: '964345673' },
-  { id: 14, dni: '74125814', name: 'GOMEZ ROJAS KEVIN DANIEL', grade: 'TERCERO', section: 'CESAR VALLEJO', phone: '964345674' },
-  { id: 15, dni: '74125815', name: 'BAUTISTA DE LA CRUZ JHON', grade: 'CUARTO', section: 'NIKOLA TESLA', phone: '964456781' },
-  { id: 16, dni: '74125816', name: 'CHAHUA HUAMAN CRISTIAN', grade: 'CUARTO', section: 'NIKOLA TESLA', phone: '964456782' },
-  { id: 17, dni: '74125817', name: 'DIAZ MENDOZA JHAN PIERO', grade: 'CUARTO', section: 'NIKOLA TESLA', phone: '964456783' },
-  { id: 18, dni: '74125818', name: 'ARIAS CCANTO MIGUEL ANGEL', grade: 'QUINTO', section: 'SOCRATES', phone: '964567891' },
-  { id: 19, dni: '74125819', name: 'CCORA TAYPE JUAN CARLOS', grade: 'QUINTO', section: 'SOCRATES', phone: '964567892' },
-  { id: 20, dni: '74125820', name: 'QUISPE MENDOZA FLOR MARIA', grade: 'QUINTO', section: 'SOCRATES', phone: '964567893' },
-];
-
 export default function App() {
+  // 1. ESTADO DE CONECTIVIDAD Y COLA OFFLINE
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline_v9');
+    const local = localStorage.getItem('colegio_cola_offline_v10');
     return local ? JSON.parse(local) : [];
   });
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('colegio_cola_offline_v9', JSON.stringify(colaPendientes));
+    localStorage.setItem('colegio_cola_offline_v10', JSON.stringify(colaPendientes));
   }, [colaPendientes]);
 
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v9') || '[]');
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v10') || '[]');
     if (!navigator.onLine || colaActual.length === 0) return;
 
     setSincronizando(true);
@@ -131,11 +67,11 @@ export default function App() {
     }
 
     setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline_v9', JSON.stringify(restantes));
+    localStorage.setItem('colegio_cola_offline_v10', JSON.stringify(restantes));
     setSincronizando(false);
 
     if (enviadosConExito > 0) {
-      setAvisoSync(`¡Conexión restaurada! Se sincronizaron ${enviadosConExito} registro(s) con la nube.`);
+      setAvisoSync(`¡Conexión restaurada! Se sincronizaron ${enviadosConExito} asistencia(s) con la nube.`);
       setTimeout(() => setAvisoSync(''), 4500);
     }
   }, []);
@@ -158,17 +94,55 @@ export default function App() {
     };
   }, [sincronizarColaConSupabase]);
 
+  // 2. GESTIÓN DE USUARIOS (INICIA VACÍO SI ESTÁ LIMPIO)
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v9');
-    return local ? JSON.parse(local) : USUARIOS_BASE;
+    const local = localStorage.getItem('colegio_usuarios_v10');
+    return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v9', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v10', JSON.stringify(usuarios));
   }, [usuarios]);
 
+  // Verificar si ya existe un Administrador / Director
+  const existeDirector = useMemo(() => {
+    return usuarios.some(u => u.rol === 'director');
+  }, [usuarios]);
+
+  // Formulario del Primer Registro del Director
+  const [primerNombreDirector, setPrimerNombreDirector] = useState('');
+  const [primerUserDirector, setPrimerUserDirector] = useState('');
+  const [primerClaveDirector, setPrimerClaveDirector] = useState('');
+  const [primerClaveConfirm, setPrimerClaveConfirm] = useState('');
+  const [errorPrimerRegistro, setErrorPrimerRegistro] = useState('');
+
+  const registrarPrimerDirector = (e) => {
+    e.preventDefault();
+    if (!primerNombreDirector.trim() || !primerUserDirector.trim() || !primerClaveDirector) return;
+
+    if (primerClaveDirector !== primerClaveConfirm) {
+      setErrorPrimerRegistro('Las contraseñas no coinciden. Verifíquelas.');
+      return;
+    }
+
+    const directorNuevo = {
+      id: 'dir_master',
+      usuario: primerUserDirector.trim().toLowerCase(),
+      clave: primerClaveDirector,
+      rol: 'director',
+      nombre: primerNombreDirector.trim(),
+      aulasAsignadas: []
+    };
+
+    const nuevosUsuarios = [directorNuevo];
+    setUsuarios(nuevosUsuarios);
+    setUsuarioAutenticado(directorNuevo);
+    localStorage.setItem('colegio_sesion_v10', JSON.stringify(directorNuevo));
+  };
+
+  // 3. SESIÓN ACTUAL
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v9');
+    const sesion = localStorage.getItem('colegio_sesion_v10');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -179,20 +153,21 @@ export default function App() {
   const [modalRecuperar, setModalRecuperar] = useState(false);
   const [errorLogin, setErrorLogin] = useState('');
 
+  // 4. PADRÓN DE ESTUDIANTES (INICIA VACÍO O CON DATOS CARGADOS)
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v9');
-    return local ? JSON.parse(local) : ESTUDIANTES_INICIALES;
+    const local = localStorage.getItem('colegio_estudiantes_v10');
+    return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v9', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v10', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
   const [rolActivo, setRolActivo] = useState('docente');
 
   const [asistencias, setAsistencias] = useState(() => {
-    const local = localStorage.getItem('colegio_asistencias');
+    const local = localStorage.getItem('colegio_asistencias_v10');
     return local ? JSON.parse(local) : {};
   });
 
@@ -220,7 +195,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('colegio_asistencias', JSON.stringify(asistencias));
+    localStorage.setItem('colegio_asistencias_v10', JSON.stringify(asistencias));
   }, [asistencias]);
 
   const handleLogin = (e) => {
@@ -233,7 +208,7 @@ export default function App() {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
       if (recordarSesion) {
-        localStorage.setItem('colegio_sesion_v9', JSON.stringify(encontrado));
+        localStorage.setItem('colegio_sesion_v10', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -245,7 +220,16 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('colegio_sesion_v9');
+      localStorage.removeItem('colegio_sesion_v10');
+    }
+  };
+
+  // Restablecer sistema a valores de fábrica
+  const restablecerSistemaDeFabrica = () => {
+    const claveSeguridad = window.prompt('ATENCIÓN: Esto borrará los usuarios y el padrón de este dispositivo para dejarlo virgen.\n\nEscriba "LIMPIAR" para confirmar:');
+    if (claveSeguridad === 'LIMPIAR') {
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -269,8 +253,8 @@ export default function App() {
       : (todasLasAulasColegio.length > 0 ? [todasLasAulasColegio[0]] : []);
   }, [esDirector, todasLasAulasColegio, usuarioAutenticado]);
 
-  const [gradoSel, setGradoSel] = useState('PRIMERO');
-  const [seccionSel, setSeccionSel] = useState('RESPONSABILIDD');
+  const [gradoSel, setGradoSel] = useState('');
+  const [seccionSel, setSeccionSel] = useState('');
 
   useEffect(() => {
     if (aulasPermitidasDocente.length > 0) {
@@ -283,6 +267,7 @@ export default function App() {
   }, [aulasPermitidasDocente, gradoSel, seccionSel]);
 
   const alumnosAula = useMemo(() => {
+    if (!gradoSel || !seccionSel) return [];
     return estudiantes.filter(e => e.grade === gradoSel && e.section === seccionSel);
   }, [estudiantes, gradoSel, seccionSel]);
 
@@ -466,24 +451,23 @@ export default function App() {
     return { faltasHoy, tardanzasHoy, presentesHoy, enRiesgo, faltaronHoyLista, acumulados };
   }, [asistencias, estudiantes, fechaHoy]);
 
-  // =========================================================================
-  // MOTOR AVANZADO DE REPORTES EN EXCEL (.XLSX) — DÍA, SEMANA, MES Y GENERAL
-  // =========================================================================
-  const [tipoPeriodoReporte, setTipoPeriodoReporte] = useState('dia'); // 'dia' | 'semana' | 'mes'
-  const [alcanceReporte, setAlcanceReporte] = useState('todos'); // 'todos' | 'grado' | 'aula'
+  // ==========================================
+  // MOTOR DE REPORTES EN EXCEL (.XLSX)
+  // ==========================================
+  const [tipoPeriodoReporte, setTipoPeriodoReporte] = useState('dia');
+  const [alcanceReporte, setAlcanceReporte] = useState('todos');
   const [filtroGradoReporte, setFiltroGradoReporte] = useState('PRIMERO');
-  const [filtroSeccionReporte, setFiltroSeccionReporte] = useState('RESPONSABILIDD');
+  const [filtroSeccionReporte, setFiltroSeccionReporte] = useState('A');
 
-  // Cálculos de fechas para Semana y Mes
   const obtenerDiasSemana = (fechaStr) => {
     const d = new Date(fechaStr + 'T00:00:00');
-    const diaSem = d.getDay(); // 0 Dom, 1 Lun, 2 Mar ... 6 Sab
+    const diaSem = d.getDay();
     const diffALunes = diaSem === 0 ? -6 : 1 - diaSem;
     const lunes = new Date(d);
     lunes.setDate(d.getDate() + diffALunes);
     
     const dias = [];
-    for (let i = 0; i < 5; i++) { // Lunes a Viernes
+    for (let i = 0; i < 5; i++) {
       const temp = new Date(lunes);
       temp.setDate(lunes.getDate() + i);
       dias.push(temp.toISOString().split('T')[0]);
@@ -501,7 +485,6 @@ export default function App() {
     for (let d = 1; d <= totalDias; d++) {
       const f = `${anio}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dt = new Date(f + 'T00:00:00');
-      // Filtrar solo días de lunes a viernes (1 a 5)
       if (dt.getDay() >= 1 && dt.getDay() <= 5) {
         diasHabiles.push(f);
       }
@@ -509,15 +492,18 @@ export default function App() {
     return diasHabiles;
   };
 
-  // Función Central de Generación de Excel
   const generarReporteExcelAvanzado = async () => {
+    if (estudiantes.length === 0) {
+      alert('El padrón escolar no tiene alumnos registrados.');
+      return;
+    }
+
     try {
       const XLSX = await cargarLibreriaExcel();
       const wb = XLSX.utils.book_new();
 
-      // 1. Filtrar estudiantes según el alcance seleccionado
       let listaExportar = estudiantes;
-      let tituloAlcance = 'GENERAL - TODOS LOS GRADOS Y SECCIONES';
+      let tituloAlcance = 'GENERAL - TODOS LOS GRADOS';
 
       if (alcanceReporte === 'grado') {
         listaExportar = estudiantes.filter(e => e.grade === filtroGradoReporte);
@@ -527,7 +513,6 @@ export default function App() {
         tituloAlcance = `AULA: ${filtroGradoReporte} - ${filtroSeccionReporte}`;
       }
 
-      // Ordenar alfabéticamente por Grado, Sección y Nombre
       listaExportar.sort((a, b) => {
         if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
         if (a.section !== b.section) return a.section.localeCompare(b.section);
@@ -538,19 +523,14 @@ export default function App() {
       let nombreArchivo = '';
       let anchosCols = [];
 
-      // ==========================================
-      // CASO A: REPORTE DIARIO
-      // ==========================================
       if (tipoPeriodoReporte === 'dia') {
         nombreArchivo = `Asistencia_Diaria_${fechaHoy}_${alcanceReporte.toUpperCase()}.xlsx`;
-        
         datos.push(['REPORTE DIARIO DE ASISTENCIA ESCOLAR']);
         datos.push(['Institución Educativa:', 'EduAsistencia']);
-        datos.push(['Fecha del Registro:', fechaHoy]);
-        datos.push(['Alcance del Reporte:', tituloAlcance]);
-        datos.push(['Total de Alumnos:', listaExportar.length]);
-        datos.push([]); // Espacio
-
+        datos.push(['Fecha:', fechaHoy]);
+        datos.push(['Alcance:', tituloAlcance]);
+        datos.push(['Total Alumnos:', listaExportar.length]);
+        datos.push([]);
         datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO', 'HORA REGISTRO', 'CELULAR APODERADO']);
 
         const diaActual = asistencias[fechaHoy] || {};
@@ -558,53 +538,30 @@ export default function App() {
           const st = diaActual[alumno.id]?.status || 'P';
           const hora = diaActual[alumno.id]?.time || '--:--';
           const estadoDesc = st === 'P' ? 'PRESENTE' : st === 'T' ? 'TARDANZA' : 'FALTA';
-          datos.push([
-            i + 1,
-            alumno.dni || 'S/D',
-            alumno.name,
-            alumno.grade,
-            alumno.section,
-            estadoDesc,
-            hora,
-            alumno.phone || ''
-          ]);
+          datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, estadoDesc, hora, alumno.phone || '']);
         });
 
-        anchosCols = [
-          { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 }
-        ];
+        anchosCols = [{ wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
 
-      // ==========================================
-      // CASO B: REPORTE SEMANAL (LUNES A VIERNES)
-      // ==========================================
       } else if (tipoPeriodoReporte === 'semana') {
         const diasSemana = obtenerDiasSemana(fechaHoy);
         const nombresDias = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE'];
         nombreArchivo = `Asistencia_Semanal_${diasSemana[0]}_al_${diasSemana[4]}_${alcanceReporte.toUpperCase()}.xlsx`;
 
-        datos.push(['CONSOLIDADO SEMANAL DE ASISTENCIA ESCOLAR']);
+        datos.push(['CONSOLIDADO SEMANAL DE ASISTENCIA']);
         datos.push(['Semana Lectiva:', `Del ${diasSemana[0]} al ${diasSemana[4]}`]);
         datos.push(['Alcance:', tituloAlcance]);
-        datos.push(['Total Alumnos Evaluados:', listaExportar.length]);
+        datos.push(['Total Evaluados:', listaExportar.length]);
         datos.push([]);
 
-        // Encabezados con las fechas de cada día
         const filaEncabezados = ['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN'];
-        diasSemana.forEach((d, idx) => {
-          filaEncabezados.push(`${nombresDias[idx]} (${d.slice(5)})`);
-        });
+        diasSemana.forEach((d, idx) => filaEncabezados.push(`${nombresDias[idx]} (${d.slice(5)})`));
         filaEncabezados.push('TOTAL P', 'TOTAL T', 'TOTAL F', '% ASISTENCIA', 'CELULAR');
         datos.push(filaEncabezados);
 
         listaExportar.forEach((alumno, i) => {
           let countP = 0, countT = 0, countF = 0;
-          const filaAlumno = [
-            i + 1,
-            alumno.dni || 'S/D',
-            alumno.name,
-            alumno.grade,
-            alumno.section
-          ];
+          const filaAlumno = [i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section];
 
           diasSemana.forEach(d => {
             const estado = asistencias[d]?.[alumno.id]?.status || '-';
@@ -616,7 +573,6 @@ export default function App() {
 
           const totalRegistrados = countP + countT + countF;
           const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT) / totalRegistrados) * 100) : 100;
-
           filaAlumno.push(countP, countT, countF, `${porcentaje}%`, alumno.phone || '');
           datos.push(filaAlumno);
         });
@@ -627,30 +583,21 @@ export default function App() {
           { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 16 }
         ];
 
-      // ==========================================
-      // CASO C: REPORTE MENSUAL (CONSOLIDADO COMPLETO)
-      // ==========================================
       } else if (tipoPeriodoReporte === 'mes') {
-        const mesActual = fechaHoy.slice(0, 7); // YYYY-MM
+        const mesActual = fechaHoy.slice(0, 7);
         const diasHabilesMes = obtenerDiasMes(fechaHoy);
         nombreArchivo = `Consolidado_Mensual_${mesActual}_${alcanceReporte.toUpperCase()}.xlsx`;
 
         datos.push(['REGISTRO CONSOLIDADO MENSUAL DE ASISTENCIA']);
         datos.push(['Mes de Evaluación:', mesActual]);
-        datos.push(['Días Hábiles del Mes:', diasHabilesMes.length]);
+        datos.push(['Días Hábiles:', diasHabilesMes.length]);
         datos.push(['Alcance:', tituloAlcance]);
-        datos.push(['Total de Alumnos:', listaExportar.length]);
         datos.push([]);
 
-        datos.push([
-          'N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 
-          'PUNTUALES (P)', 'TARDANZAS (T)', 'FALTAS (F)', 'TOTAL CLASES', 
-          '% PUNTUALIDAD', 'CONDICIÓN', 'TELÉFONO APODERADO'
-        ]);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'PUNTUALES (P)', 'TARDANZAS (T)', 'FALTAS (F)', 'TOTAL CLASES', '% ASISTENCIA', 'CONDICIÓN', 'CELULAR APODERADO']);
 
         listaExportar.forEach((alumno, i) => {
           let countP = 0, countT = 0, countF = 0;
-          
           diasHabilesMes.forEach(d => {
             const st = asistencias[d]?.[alumno.id]?.status;
             if (st === 'P') countP++;
@@ -662,20 +609,7 @@ export default function App() {
           const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT) / totalRegistrados) * 100) : 100;
           const condicion = (countT >= 3 || countF >= 3) ? 'EN RIESGO DISCIPLINARIO' : 'REGULAR';
 
-          datos.push([
-            i + 1,
-            alumno.dni || 'S/D',
-            alumno.name,
-            alumno.grade,
-            alumno.section,
-            countP,
-            countT,
-            countF,
-            totalRegistrados,
-            `${porcentaje}%`,
-            condicion,
-            alumno.phone || ''
-          ]);
+          datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, countP, countT, countF, totalRegistrados, `${porcentaje}%`, condicion, alumno.phone || '']);
         });
 
         anchosCols = [
@@ -685,14 +619,13 @@ export default function App() {
         ];
       }
 
-      // Convertir a hoja de cálculo de Excel
       const ws = XLSX.utils.aoa_to_sheet(datos);
       ws['!cols'] = anchosCols;
       XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
       XLSX.writeFile(wb, nombreArchivo);
 
     } catch (err) {
-      alert('Error al generar el archivo Excel: ' + err.message);
+      alert('Error al generar Excel: ' + err.message);
     }
   };
 
@@ -714,6 +647,7 @@ export default function App() {
     }
   };
 
+  // Carga Masiva de Alumnos en Excel (.xlsx, .xls)
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -764,14 +698,14 @@ export default function App() {
           dni: String(fila[colDni] || 'S/D').trim(),
           name: nombre,
           grade: String(fila[colGrado] || 'PRIMERO').trim().toUpperCase(),
-          section: String(fila[colSeccion] || 'RESPONSABILIDD').trim().toUpperCase(),
+          section: String(fila[colSeccion] || 'A').trim().toUpperCase(),
           phone: String(fila[colTelefono] || '999999999').trim()
         });
       }
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        alert(`¡Padrón actualizado! Se cargaron ${cargados.length} estudiantes.`);
+        alert(`¡Padrón cargado exitosamente! Se incorporaron ${cargados.length} estudiantes.`);
       } else {
         alert('No se detectaron estudiantes válidos en el archivo.');
       }
@@ -812,7 +746,7 @@ export default function App() {
   const [nuevoDniAlumno, setNuevoDniAlumno] = useState('');
   const [nuevoNombreAlumno, setNuevoNombreAlumno] = useState('');
   const [nuevoGradoAlumno, setNuevoGradoAlumno] = useState('PRIMERO');
-  const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('RESPONSABILIDD');
+  const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('A');
   const [nuevoCelularAlumno, setNuevoCelularAlumno] = useState('');
   
   const [alumnoEditando, setAlumnoEditando] = useState(null);
@@ -909,7 +843,98 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // LOGIN
+  // =========================================================================
+  // CASO 1: PANTALLA VIRGEN / PRIMER REGISTRO DE LA DIRECCIÓN
+  // =========================================================================
+  if (!existeDirector) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+          
+          <div className="bg-emerald-800 p-6 text-center text-white">
+            <div className="w-16 h-16 bg-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-emerald-700">
+              <Sparkles className="w-9 h-9 text-emerald-300" />
+            </div>
+            <h1 className="text-xl font-black tracking-tight">Bienvenido a EduAsistencia</h1>
+            <p className="text-xs text-emerald-200 mt-1">Configuración Inicial del Colegio</p>
+          </div>
+
+          <form onSubmit={registrarPrimerDirector} className="p-5 sm:p-6 space-y-3.5">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 font-medium leading-relaxed">
+              El sistema se encuentra <b>completamente limpio</b>. Como primer paso, registre la cuenta del <b>Director / Administrador General</b>.
+            </div>
+
+            {errorPrimerRegistro && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{errorPrimerRegistro}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre Completo del Director(a)</label>
+              <input
+                type="text"
+                placeholder="Ej: Lic. Wilder Huamán Quispe"
+                value={primerNombreDirector}
+                onChange={(e) => setPrimerNombreDirector(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario para Iniciar Sesión</label>
+              <input
+                type="text"
+                placeholder="Ej: director o miusuario"
+                value={primerUserDirector}
+                onChange={(e) => setPrimerUserDirector(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña Maestra</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={primerClaveDirector}
+                  onChange={(e) => setPrimerClaveDirector(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Repetir Contraseña</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={primerClaveConfirm}
+                  onChange={(e) => setPrimerClaveConfirm(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3.5 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 transition mt-2"
+            >
+              <KeyRound className="w-4 h-4" /> Activar Sistema y Crear Director
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // CASO 2: LOGIN NORMAL DEL COLEGIO
+  // ==========================================
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1028,7 +1053,7 @@ export default function App() {
 
               <div className="space-y-2">
                 <a
-                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema.')}`}
+                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema de asistencia.')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow"
@@ -1050,6 +1075,9 @@ export default function App() {
     );
   }
 
+  // ==========================================
+  // CASO 3: APLICACIÓN PRINCIPAL EN FUNCIONAMIENTO
+  // ==========================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
       
@@ -1084,7 +1112,7 @@ export default function App() {
         </div>
       )}
 
-      {/* CABECERA PRINCIPAL ADAPTABLE */}
+      {/* CABECERA */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2">
@@ -1117,7 +1145,7 @@ export default function App() {
           <div className="mt-2 pt-2 border-t border-emerald-600/50 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 bg-emerald-800/90 px-3 py-1.5 rounded-xl text-xs font-medium w-full">
               <Calendar className="w-4 h-4 text-emerald-300 shrink-0" />
-              <span className="text-[11px] text-emerald-200 font-bold shrink-0">Fecha de Referencia:</span>
+              <span className="text-[11px] text-emerald-200 font-bold shrink-0">Fecha:</span>
               <input
                 type="date"
                 value={fechaHoy}
@@ -1168,136 +1196,145 @@ export default function App() {
         </div>
       </header>
 
-      {/* CUERPO PRINCIPAL */}
+      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-2xl mx-auto w-full px-3.5 pt-3.5 flex-1">
         
         {/* AULA DOCENTE */}
         {rolActivo === 'docente' && (
           <div className="space-y-3.5">
-            
-            <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-200">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> 
-                  {esDirector ? 'Modo Auditoría' : `Tus Aulas (${aulasPermitidasDocente.length})`}
-                </span>
-                <span className="text-[11px] text-slate-400 font-semibold">Salón actual</span>
+            {aulasPermitidasDocente.length === 0 ? (
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+                <School className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <h3 className="font-bold text-slate-700 text-sm">No hay aulas asignadas</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  La Dirección debe registrar o importar estudiantes desde el Panel de Director.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> 
+                      {esDirector ? 'Modo Auditoría' : `Tus Aulas (${aulasPermitidasDocente.length})`}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-semibold">Salón actual</span>
+                  </div>
 
-              <select 
-                value={`${gradoSel}|${seccionSel}`} 
-                onChange={(e) => {
-                  const [g, s] = e.target.value.split('|');
-                  setGradoSel(g);
-                  setSeccionSel(s);
-                }}
-                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl font-black text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500"
-              >
-                {aulasPermitidasDocente.map(a => (
-                  <option key={`${a.grade}|${a.section}`} value={`${a.grade}|${a.section}`}>
-                    {a.grade} - {a.section}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-800 flex items-center gap-1.5 flex-1">
-                <span>Estado:</span>
-                <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">P</span>
-                <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-bold text-[11px]">T</span>
-                <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">F</span>
-              </div>
-
-              {/* Botón rápido para el profesor */}
-              <button
-                onClick={() => {
-                  setTipoPeriodoReporte('dia');
-                  setAlcanceReporte('aula');
-                  setFiltroGradoReporte(gradoSel);
-                  setFiltroSeccionReporte(seccionSel);
-                  generarReporteExcelAvanzado();
-                }}
-                className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold px-3 py-2.5 rounded-xl flex items-center gap-1.5 shadow transition-all shrink-0"
-                title="Descargar asistencia del salón en Excel"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-                <span className="hidden sm:inline">Exportar</span> Aula (.xlsx)
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {alumnosAula.length === 0 ? (
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">
-                  No hay alumnos matriculados en esta sección.
+                  <select 
+                    value={`${gradoSel}|${seccionSel}`} 
+                    onChange={(e) => {
+                      const [g, s] = e.target.value.split('|');
+                      setGradoSel(g);
+                      setSeccionSel(s);
+                    }}
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl font-black text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {aulasPermitidasDocente.map(a => (
+                      <option key={`${a.grade}|${a.section}`} value={`${a.grade}|${a.section}`}>
+                        {a.grade} - {a.section}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                alumnosAula.map((alumno, index) => {
-                  const estado = asistenciaAula[alumno.id] || 'P';
-                  return (
-                    <div 
-                      key={alumno.id}
-                      onClick={() => alternarEstadoAlumno(alumno.id)}
-                      className={`cursor-pointer select-none p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between shadow-sm active:scale-[0.98] ${
-                        estado === 'P' 
-                          ? 'bg-emerald-50/80 border-emerald-300' 
-                          : estado === 'T' 
-                            ? 'bg-amber-50/80 border-amber-400' 
-                            : 'bg-rose-50/80 border-rose-400'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                        <span className="text-xs font-black text-slate-400 w-5 shrink-0">#{index + 1}</span>
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-xs sm:text-sm leading-tight truncate">{alumno.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                            {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}Apod: {alumno.phone}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="shrink-0">
-                        {estado === 'P' && (
-                          <div className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> P
-                          </div>
-                        )}
-                        {estado === 'T' && (
-                          <div className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
-                            <Clock className="w-3.5 h-3.5" /> T
-                          </div>
-                        )}
-                        {estado === 'F' && (
-                          <div className="flex items-center gap-1 bg-rose-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
-                            <XCircle className="w-3.5 h-3.5" /> F
-                          </div>
-                        )}
-                      </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-800 flex items-center gap-1.5 flex-1">
+                    <span>Estado:</span>
+                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">P</span>
+                    <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-bold text-[11px]">T</span>
+                    <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">F</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setTipoPeriodoReporte('dia');
+                      setAlcanceReporte('aula');
+                      setFiltroGradoReporte(gradoSel);
+                      setFiltroSeccionReporte(seccionSel);
+                      generarReporteExcelAvanzado();
+                    }}
+                    className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold px-3 py-2.5 rounded-xl flex items-center gap-1.5 shadow transition-all shrink-0"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+                    <span>Excel (.xlsx)</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {alumnosAula.length === 0 ? (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">
+                      No hay alumnos en esta sección ({gradoSel} - {seccionSel}).
                     </div>
-                  );
-                })
-              )}
-            </div>
-
-            {alumnosAula.length > 0 && (
-              <div className="pt-2">
-                <button 
-                  onClick={guardarAsistenciaAula}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-base transition-transform active:scale-[0.99]"
-                >
-                  {guardadoExitoso ? (
-                    <>
-                      <Check className="w-6 h-6 text-white shrink-0" /> 
-                      <span className="truncate">{mensajeGuardado}</span>
-                    </>
                   ) : (
-                    <>
-                      <CheckCircle2 className="w-6 h-6 shrink-0" /> 
-                      <span className="truncate">Guardar Asistencia de {seccionSel}</span>
-                    </>
+                    alumnosAula.map((alumno, index) => {
+                      const estado = asistenciaAula[alumno.id] || 'P';
+                      return (
+                        <div 
+                          key={alumno.id}
+                          onClick={() => alternarEstadoAlumno(alumno.id)}
+                          className={`cursor-pointer select-none p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between shadow-sm active:scale-[0.98] ${
+                            estado === 'P' 
+                              ? 'bg-emerald-50/80 border-emerald-300' 
+                              : estado === 'T' 
+                                ? 'bg-amber-50/80 border-amber-400' 
+                                : 'bg-rose-50/80 border-rose-400'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span className="text-xs font-black text-slate-400 w-5 shrink-0">#{index + 1}</span>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 text-xs sm:text-sm leading-tight truncate">{alumno.name}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}Apod: {alumno.phone}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {estado === 'P' && (
+                              <div className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> P
+                              </div>
+                            )}
+                            {estado === 'T' && (
+                              <div className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
+                                <Clock className="w-3.5 h-3.5" /> T
+                              </div>
+                            )}
+                            {estado === 'F' && (
+                              <div className="flex items-center gap-1 bg-rose-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
+                                <XCircle className="w-3.5 h-3.5" /> F
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
-                </button>
-              </div>
+                </div>
+
+                {alumnosAula.length > 0 && (
+                  <div className="pt-2">
+                    <button 
+                      onClick={guardarAsistenciaAula}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-base transition-transform active:scale-[0.99]"
+                    >
+                      {guardadoExitoso ? (
+                        <>
+                          <Check className="w-6 h-6 text-white shrink-0" /> 
+                          <span className="truncate">{mensajeGuardado}</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-6 h-6 shrink-0" /> 
+                          <span className="truncate">Guardar Asistencia de {seccionSel}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -1360,7 +1397,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PANEL DIRECTOR CON CENTRO AVANZADO DE EXPORTACIÓN */}
+        {/* PANEL DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-3.5">
             
@@ -1391,10 +1428,9 @@ export default function App() {
               </button>
             </div>
 
-            {/* SECCIÓN REPORTES Y EXPORTACIÓN AVANZADA */}
+            {/* SECCIÓN REPORTES */}
             {pestanaDirector === 'metricas' && (
               <>
-                {/* MÉTRICAS HOY */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Presentes</p>
@@ -1412,20 +1448,17 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* CENTRO DE EXPORTACIÓN INTELIGENTE A EXCEL */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-300">
                   <div className="flex items-center gap-2 text-emerald-900 font-bold mb-3">
                     <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                    <h3 className="text-sm font-black">Centro de Reportes Oficiales en Excel (.xlsx)</h3>
+                    <h3 className="text-sm font-black">Centro de Reportes en Excel (.xlsx)</h3>
                   </div>
 
                   <div className="space-y-3">
-                    
-                    {/* 1. SELECCIÓN DE PERÍODO (DÍA / SEMANA / MES) */}
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1.5 flex items-center gap-1">
                         <CalendarRange className="w-3.5 h-3.5 text-emerald-600" />
-                        1. Seleccione el período del reporte:
+                        1. Seleccione el período:
                       </label>
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
@@ -1464,11 +1497,10 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* 2. SELECCIÓN DE ALCANCE (GENERAL / GRADO / AULA) */}
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1.5 flex items-center gap-1">
                         <Filter className="w-3.5 h-3.5 text-emerald-600" />
-                        2. Seleccione el alcance de los estudiantes:
+                        2. Seleccione el alcance:
                       </label>
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
@@ -1507,11 +1539,10 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* SELECTORES CONDICIONALES DE GRADO O SECCIÓN */}
                     {(alcanceReporte === 'grado' || alcanceReporte === 'aula') && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 animate-fadeIn">
                         <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Grado a Exportar</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Grado</label>
                           <select
                             value={filtroGradoReporte}
                             onChange={(e) => setFiltroGradoReporte(e.target.value)}
@@ -1527,12 +1558,12 @@ export default function App() {
 
                         {alcanceReporte === 'aula' && (
                           <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Sección a Exportar</label>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Sección</label>
                             <input
                               type="text"
                               value={filtroSeccionReporte}
                               onChange={(e) => setFiltroSeccionReporte(e.target.value.toUpperCase())}
-                              placeholder="Ej: RESPONSABILIDD"
+                              placeholder="Ej: A"
                               className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                             />
                           </div>
@@ -1540,7 +1571,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* BOTÓN DESCARGAR EXCEL PROMINENTE */}
                     <button
                       type="button"
                       onClick={generarReporteExcelAvanzado}
@@ -1552,7 +1582,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* AUSENTES HOY */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
@@ -1592,7 +1621,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* ALERTAS DE RIESGO */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
@@ -1751,43 +1779,47 @@ export default function App() {
                     Padrón ({alumnosFiltradosDirector.length} alumnos)
                   </h3>
 
-                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {alumnosFiltradosDirector.map(alumno => (
-                      <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                            {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}
-                            <span className="font-semibold text-emerald-700">{alumno.grade} - {alumno.section}</span>
-                          </p>
-                          <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-0.5">
-                            <Phone className="w-3 h-3 text-slate-400" /> {alumno.phone}
-                          </p>
-                        </div>
+                  {estudiantes.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">No hay estudiantes cargados. Suba el archivo de Excel arriba.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {alumnosFiltradosDirector.map(alumno => (
+                        <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                              {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}
+                              <span className="font-semibold text-emerald-700">{alumno.grade} - {alumno.section}</span>
+                            </p>
+                            <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400" /> {alumno.phone}
+                            </p>
+                          </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => {
-                              setAlumnoEditando(alumno);
-                              setNuevoTelefonoEdit(alumno.phone);
-                            }}
-                            className="bg-blue-50 text-blue-700 p-2 rounded-lg text-xs font-bold"
-                            title="Editar celular"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          
-                          <button
-                            onClick={() => retirarAlumno(alumno.id, alumno.name)}
-                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg"
-                            title="Dar de baja"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                setAlumnoEditando(alumno);
+                                setNuevoTelefonoEdit(alumno.phone);
+                              }}
+                              className="bg-blue-50 text-blue-700 p-2 rounded-lg text-xs font-bold"
+                              title="Editar celular"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            
+                            <button
+                              onClick={() => retirarAlumno(alumno.id, alumno.name)}
+                              className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg"
+                              title="Dar de baja"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {alumnoEditando && (
@@ -1824,7 +1856,7 @@ export default function App() {
               </div>
             )}
 
-            {/* GESTIÓN DE DOCENTES */}
+            {/* GESTIÓN DE DOCENTES Y REINICIO */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-3.5">
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
@@ -1872,27 +1904,31 @@ export default function App() {
                       <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
                         Marcar aulas que dictará ({aulasSeleccionadasNuevas.length} elegidas):
                       </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
-                        {todasLasAulasColegio.map(aula => {
-                          const clave = `${aula.grade}|${aula.section}`;
-                          const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
-                          return (
-                            <button
-                              type="button"
-                              key={clave}
-                              onClick={() => alternarSeleccionAula(clave)}
-                              className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between ${
-                                estaMarcada 
-                                  ? 'bg-emerald-600 text-white border-emerald-700' 
-                                  : 'bg-white text-slate-700 border-slate-300'
-                              }`}
-                            >
-                              <span className="truncate">{aula.grade} - {aula.section}</span>
-                              {estaMarcada && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {todasLasAulasColegio.length === 0 ? (
+                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg">Primero suba el archivo de alumnos en la pestaña Padrón para que aparezcan las aulas.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                          {todasLasAulasColegio.map(aula => {
+                            const clave = `${aula.grade}|${aula.section}`;
+                            const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
+                            return (
+                              <button
+                                type="button"
+                                key={clave}
+                                onClick={() => alternarSeleccionAula(clave)}
+                                className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between ${
+                                  estaMarcada 
+                                    ? 'bg-emerald-600 text-white border-emerald-700' 
+                                    : 'bg-white text-slate-700 border-slate-300'
+                                }`}
+                              >
+                                <span className="truncate">{aula.grade} - {aula.section}</span>
+                                {estaMarcada && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -1941,13 +1977,27 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                {/* ZONA DE SEGURIDAD / RESETEO TOTAL */}
+                <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl">
+                  <h4 className="text-xs font-bold text-rose-800 uppercase mb-1">Zona de Entrega del Software</h4>
+                  <p className="text-[11px] text-rose-700 mb-2.5">
+                    Si desea entregar el sistema en blanco para que el Director sea el primero en configurarlo:
+                  </p>
+                  <button
+                    onClick={restablecerSistemaDeFabrica}
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Dejar Sistema Virgen de Fábrica
+                  </button>
+                </div>
               </div>
             )}
 
           </div>
         )}
 
-        {/* BOTÓN SECUNDARIO DE SALIDA AL PIE */}
+        {/* BOTÓN SECUNDARIO DE SALIDA */}
         <div className="mt-8 pt-4 border-t border-slate-200 flex flex-col items-center gap-2">
           <p className="text-[11px] text-slate-400 font-medium">
             Conectado como <b>{usuarioAutenticado.nombre}</b>
