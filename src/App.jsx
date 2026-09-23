@@ -5,8 +5,20 @@ import {
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit, Plus, UserMinus
+  Upload, Edit, Plus
 } from 'lucide-react';
+
+// Carga asíncrona del motor oficial de Excel (.xlsx)
+const cargarLibreriaExcel = () => {
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error('No se pudo cargar el procesador de Excel'));
+    document.head.appendChild(script);
+  });
+};
 
 // Cuentas del personal
 const USUARIOS_BASE = [
@@ -72,19 +84,17 @@ const ESTUDIANTES_INICIALES = [
 ];
 
 export default function App() {
-  // Lista de usuarios y asignaciones administrada por el Director
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v3');
+    const local = localStorage.getItem('colegio_usuarios_v4');
     return local ? JSON.parse(local) : USUARIOS_BASE;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v3', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v4', JSON.stringify(usuarios));
   }, [usuarios]);
 
-  // Sesión y Login
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v3');
+    const sesion = localStorage.getItem('colegio_sesion_v4');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -94,14 +104,14 @@ export default function App() {
   const [modalRecuperar, setModalRecuperar] = useState(false);
   const [errorLogin, setErrorLogin] = useState('');
 
-  // Estudiantes en el Padrón Escolar
+  // Padrón de Estudiantes
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v3');
+    const local = localStorage.getItem('colegio_estudiantes_v4');
     return local ? JSON.parse(local) : ESTUDIANTES_INICIALES;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v3', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v4', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
@@ -112,7 +122,6 @@ export default function App() {
     return local ? JSON.parse(local) : {};
   });
 
-  // Cargar asistencias desde Supabase
   useEffect(() => {
     const cargarDesdeSupabase = async () => {
       try {
@@ -139,7 +148,6 @@ export default function App() {
     localStorage.setItem('colegio_asistencias', JSON.stringify(asistencias));
   }, [asistencias]);
 
-  // Manejo de Login
   const handleLogin = (e) => {
     e.preventDefault();
     const encontrado = usuarios.find(
@@ -149,7 +157,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
-      localStorage.setItem('colegio_sesion_v3', JSON.stringify(encontrado));
+      localStorage.setItem('colegio_sesion_v4', JSON.stringify(encontrado));
       setErrorLogin('');
       setInputClave('');
     } else {
@@ -159,10 +167,9 @@ export default function App() {
 
   const handleLogout = () => {
     setUsuarioAutenticado(null);
-    localStorage.removeItem('colegio_sesion_v3');
+    localStorage.removeItem('colegio_sesion_v4');
   };
 
-  // CONTROL DE ACCESO A AULAS
   const esDirector = usuarioAutenticado?.rol === 'director';
 
   const gradosDisponibles = useMemo(() => {
@@ -223,7 +230,6 @@ export default function App() {
     });
   };
 
-  // Guardar asistencia en Supabase
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
@@ -261,9 +267,7 @@ export default function App() {
     }
   };
 
-  // ==========================================
-  // CONTROL DE PUERTA INTELIGENTE (HORARIO LÍMITE 8:00 AM)
-  // ==========================================
+  // Control de puerta con regla estricta (Límite 8:00 AM)
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -275,17 +279,15 @@ export default function App() {
       (e.dni && e.dni.includes(t)) || 
       e.grade.includes(t) || 
       e.section.includes(t)
-    ).slice(0, 6);
+    ).slice(0, 8);
   }, [busquedaAux, estudiantes]);
 
-  // Registro en puerta con cálculo automático según la hora (límite 8:00 AM)
   const registrarIngresoPuerta = async (alumno) => {
     const ahora = new Date();
     const horas = ahora.getHours();
     const minutos = ahora.getMinutes();
     const horaTexto = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Regla: Hasta las 8:00 AM es Presente (Puntual). A partir de las 8:01 AM es Tardanza (T)
     const esTarde = horas > 8 || (horas === 8 && minutos > 0);
     const estadoAsignado = esTarde ? 'T' : 'P';
 
@@ -324,7 +326,6 @@ export default function App() {
     }
   };
 
-  // Métricas Director
   const metricasDirector = useMemo(() => {
     const dia = asistencias[fechaHoy] || {};
     let faltasHoy = 0;
@@ -354,69 +355,215 @@ export default function App() {
     return { faltasHoy, tardanzasHoy, presentesHoy, enRiesgo, faltaronHoyLista, acumulados };
   }, [asistencias, estudiantes, fechaHoy]);
 
-  // Exportar Excel (.csv con UTF-8 BOM)
-  const exportarAExcel = (tipo = 'aula') => {
-    let csv = '\uFEFF';
+  // ==========================================
+  // GENERACIÓN DE EXCEL REAL (.XLSX) PERFECTAMENTE ORDENADO
+  // ==========================================
+  const exportarAExcel = async (tipo = 'aula') => {
+    try {
+      const XLSX = await cargarLibreriaExcel();
+      const wb = XLSX.utils.book_new();
+      let datos = [];
+      let nombreArchivo = '';
+      let anchosColumnas = [];
 
-    if (tipo === 'aula') {
-      csv += `REPORTE DE ASISTENCIA - ${gradoSel} ${seccionSel}\n`;
-      csv += `Docente a cargo: ${usuarioAutenticado?.nombre}\n`;
-      csv += `Fecha: ${fechaHoy}\n\n`;
-      csv += `N°,DNI,ESTUDIANTE,ESTADO,HORA REGISTRO,TELÉFONO APODERADO\n`;
+      if (tipo === 'aula') {
+        nombreArchivo = `Asistencia_${gradoSel}_${seccionSel}_${fechaHoy}.xlsx`;
+        datos.push(['REPORTE DE ASISTENCIA ESCOLAR']);
+        datos.push(['Grado y Sección:', `${gradoSel} - ${seccionSel}`]);
+        datos.push(['Docente Responsable:', usuarioAutenticado?.nombre || 'Docente']);
+        datos.push(['Fecha:', fechaHoy]);
+        datos.push([]); // Espacio en blanco
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO', 'HORA', 'TELÉFONO APODERADO']);
 
-      const diaActual = asistencias[fechaHoy] || {};
-      alumnosAula.forEach((alumno, index) => {
-        const est = diaActual[alumno.id]?.status || 'P';
-        const hora = diaActual[alumno.id]?.time || '--:--';
-        const estadoDesc = est === 'P' ? 'PRESENTE' : est === 'T' ? 'TARDANZA' : 'FALTA';
-        csv += `"${index + 1}","${alumno.dni || ''}","${alumno.name}","${estadoDesc}","${hora}","${alumno.phone}"\n`;
-      });
+        const diaActual = asistencias[fechaHoy] || {};
+        alumnosAula.forEach((alumno, i) => {
+          const st = diaActual[alumno.id]?.status || 'P';
+          const hora = diaActual[alumno.id]?.time || '--:--';
+          const estadoTexto = st === 'P' ? 'PRESENTE' : st === 'T' ? 'TARDANZA' : 'FALTA';
+          datos.push([
+            i + 1,
+            alumno.dni || 'S/D',
+            alumno.name,
+            alumno.grade,
+            alumno.section,
+            estadoTexto,
+            hora,
+            alumno.phone || ''
+          ]);
+        });
 
-      descargarArchivo(csv, `Asistencia_${gradoSel}_${seccionSel}_${fechaHoy}.csv`);
-    } else if (tipo === 'general_dia') {
-      csv += `CONSOLIDADO GENERAL DE ASISTENCIA DEL COLEGIO\n`;
-      csv += `Fecha: ${fechaHoy}\n\n`;
-      csv += `N°,DNI,ESTUDIANTE,GRADO,SECCIÓN,ESTADO,HORA,TELÉFONO\n`;
+        anchosColumnas = [
+          { wch: 6 },
+          { wch: 12 },
+          { wch: 38 },
+          { wch: 14 },
+          { wch: 25 },
+          { wch: 14 },
+          { wch: 10 },
+          { wch: 18 }
+        ];
+      } else if (tipo === 'general_dia') {
+        nombreArchivo = `Reporte_General_Colegio_${fechaHoy}.xlsx`;
+        datos.push(['CONSOLIDADO GENERAL DE ASISTENCIA INSTITUCIONAL']);
+        datos.push(['Fecha del Reporte:', fechaHoy]);
+        datos.push(['Total Alumnos Matriculados:', estudiantes.length]);
+        datos.push([]);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO ASISTENCIA', 'HORA REGISTRO', 'TELÉFONO APODERADO']);
 
-      const diaActual = asistencias[fechaHoy] || {};
-      estudiantes.forEach((alumno, index) => {
-        const est = diaActual[alumno.id]?.status || 'P';
-        const hora = diaActual[alumno.id]?.time || '--:--';
-        const estadoDesc = est === 'P' ? 'PRESENTE' : est === 'T' ? 'TARDANZA' : 'FALTA';
-        csv += `"${index + 1}","${alumno.dni || ''}","${alumno.name}","${alumno.grade}","${alumno.section}","${estadoDesc}","${hora}","${alumno.phone}"\n`;
-      });
+        const diaActual = asistencias[fechaHoy] || {};
+        estudiantes.forEach((alumno, i) => {
+          const st = diaActual[alumno.id]?.status || 'P';
+          const hora = diaActual[alumno.id]?.time || '--:--';
+          const estadoTexto = st === 'P' ? 'PRESENTE' : st === 'T' ? 'TARDANZA' : 'FALTA';
+          datos.push([
+            i + 1,
+            alumno.dni || 'S/D',
+            alumno.name,
+            alumno.grade,
+            alumno.section,
+            estadoTexto,
+            hora,
+            alumno.phone || ''
+          ]);
+        });
 
-      descargarArchivo(csv, `Reporte_General_Colegio_${fechaHoy}.csv`);
-    } else if (tipo === 'incidencias') {
-      csv += `REPORTE MENSUAL DE ESTUDIANTES EN RIESGO (3+ FALTAS O TARDANZAS)\n`;
-      csv += `Generado el: ${fechaHoy}\n\n`;
-      csv += `N°,DNI,ESTUDIANTE,GRADO,SECCIÓN,TARDANZAS MES,FALTAS MES,CONDICIÓN,TELÉFONO\n`;
+        anchosColumnas = [
+          { wch: 6 },
+          { wch: 12 },
+          { wch: 38 },
+          { wch: 14 },
+          { wch: 25 },
+          { wch: 16 },
+          { wch: 14 },
+          { wch: 18 }
+        ];
+      } else if (tipo === 'incidencias') {
+        nombreArchivo = `Alumnos_En_Riesgo_${fechaHoy}.xlsx`;
+        datos.push(['REPORTE DE ALUMNOS CON ALERTAS DISCIPLINARIAS (3+ FALTAS O TARDANZAS)']);
+        datos.push(['Fecha de Emisión:', fechaHoy]);
+        datos.push([]);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'TARDANZAS MES', 'FALTAS MES', 'CONDICIÓN', 'CONTACTO APODERADO']);
 
-      metricasDirector.enRiesgo.forEach((alumno, index) => {
-        csv += `"${index + 1}","${alumno.dni || ''}","${alumno.name}","${alumno.grade}","${alumno.section}","${alumno.tardanzasMes}","${alumno.faltasMes}","EN RIESGO DISCIPLINARIO","${alumno.phone}"\n`;
-      });
+        metricasDirector.enRiesgo.forEach((alumno, i) => {
+          datos.push([
+            i + 1,
+            alumno.dni || 'S/D',
+            alumno.name,
+            alumno.grade,
+            alumno.section,
+            alumno.tardanzasMes,
+            alumno.faltasMes,
+            'EN RIESGO DISCIPLINARIO',
+            alumno.phone || ''
+          ]);
+        });
 
-      descargarArchivo(csv, `Reporte_Estudiantes_En_Riesgo_${fechaHoy}.csv`);
+        anchosColumnas = [
+          { wch: 6 },
+          { wch: 12 },
+          { wch: 38 },
+          { wch: 14 },
+          { wch: 25 },
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 26 },
+          { wch: 18 }
+        ];
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(datos);
+      ws['!cols'] = anchosColumnas;
+      XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+      XLSX.writeFile(wb, nombreArchivo);
+    } catch (error) {
+      alert('Error al generar el archivo Excel: ' + error.message);
     }
   };
 
-  const descargarPlantillaCSV = () => {
-    let plantilla = '\uFEFF';
-    plantilla += `DNI,NOMBRE,GRADO,SECCION,TELEFONO\n`;
-    plantilla += `74125890,RODRIGUEZ LOPEZ MARIO,PRIMERO,RESPONSABILIDD,964112233\n`;
-    plantilla += `74125891,FLORES QUISPE DIANA,SEGUNDO,ANDRES AVELINO CACERES,964223344\n`;
-    descargarArchivo(plantilla, `Plantilla_Alumnos_Colegio.csv`);
+  const descargarPlantillaExcel = async () => {
+    try {
+      const XLSX = await cargarLibreriaExcel();
+      const wb = XLSX.utils.book_new();
+      const plantilla = [
+        ['DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCION', 'TELEFONO'],
+        ['74125890', 'RODRIGUEZ LOPEZ MARIO', 'PRIMERO', 'RESPONSABILIDD', '964112233'],
+        ['74125891', 'FLORES QUISPE DIANA', 'SEGUNDO', 'ANDRES AVELINO CACERES', '964223344']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(plantilla);
+      ws['!cols'] = [{ wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+      XLSX.writeFile(wb, 'Plantilla_Oficial_Alumnos.xlsx');
+    } catch (err) {
+      alert('Error al descargar plantilla: ' + err.message);
+    }
   };
 
-  const descargarArchivo = (contenido, nombreArchivo) => {
-    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', nombreArchivo);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // LECTURA DIRECTA DE ARCHIVOS EXCEL (.XLSX / .XLS / .CSV)
+  const procesarArchivoExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const XLSX = await cargarLibreriaExcel();
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const primeraHoja = workbook.SheetNames[0];
+      const hoja = workbook.Sheets[primeraHoja];
+      const filas = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+
+      if (filas.length <= 1) {
+        alert('El archivo Excel seleccionado no contiene filas de estudiantes.');
+        return;
+      }
+
+      let filaEncabezados = -1;
+      let colDni = 0, colNombre = 1, colGrado = 2, colSeccion = 3, colTelefono = 4;
+
+      for (let r = 0; r < Math.min(filas.length, 5); r++) {
+        const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
+        const tieneNombre = row.some(c => c.includes('NOMBRE') || c.includes('APELLIDO') || c.includes('ALUMNO') || c.includes('ESTUDIANTE'));
+        if (tieneNombre) {
+          filaEncabezados = r;
+          row.forEach((colText, idx) => {
+            if (colText.includes('DNI') || colText.includes('DOCUMENTO')) colDni = idx;
+            if (colText.includes('NOMBRE') || colText.includes('APELLIDO') || colText.includes('ALUMNO') || colText.includes('ESTUDIANTE')) colNombre = idx;
+            if (colText.includes('GRADO') || colText.includes('AÑO')) colGrado = idx;
+            if (colText.includes('SECCION') || colText.includes('SECCIÓN') || colText.includes('AULA')) colSeccion = idx;
+            if (colText.includes('TEL') || colText.includes('CEL') || colText.includes('APODERADO') || colText.includes('PADRE')) colTelefono = idx;
+          });
+          break;
+        }
+      }
+
+      const inicio = filaEncabezados !== -1 ? filaEncabezados + 1 : 1;
+      const cargados = [];
+
+      for (let i = inicio; i < filas.length; i++) {
+        const fila = filas[i];
+        if (!fila || fila.length === 0) continue;
+        const nombre = String(fila[colNombre] || '').trim().toUpperCase();
+        if (!nombre) continue;
+
+        cargados.push({
+          id: Date.now() + i,
+          dni: String(fila[colDni] || 'S/D').trim(),
+          name: nombre,
+          grade: String(fila[colGrado] || 'PRIMERO').trim().toUpperCase(),
+          section: String(fila[colSeccion] || 'RESPONSABILIDD').trim().toUpperCase(),
+          phone: String(fila[colTelefono] || '999999999').trim()
+        });
+      }
+
+      if (cargados.length > 0) {
+        setEstudiantes(cargados);
+        alert(`¡Éxito total! Se incorporaron ${cargados.length} estudiantes desde el archivo Excel.`);
+      } else {
+        alert('No se detectaron estudiantes válidos. Verifique que el archivo tenga la columna de Nombres.');
+      }
+    } catch (err) {
+      alert('Error al procesar el archivo Excel: ' + err.message);
+    }
+    e.target.value = '';
   };
 
   const enviarWhatsApp = (alumno, tipoAlerta) => {
@@ -430,12 +577,9 @@ export default function App() {
     window.open(url, '_blank');
   };
 
-  // ==========================================
-  // PANEL ADMINISTRADOR (DIRECTOR): GESTIÓN COMPLETA
-  // ==========================================
-  const [pestanaDirector, setPestanaDirector] = useState('metricas'); // 'metricas' | 'docentes' | 'alumnos'
+  // Subpestañas del Director
+  const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
-  // Docentes
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
   const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
@@ -443,7 +587,6 @@ export default function App() {
   const [nuevaSeccionDocente, setNuevaSeccionDocente] = useState('RESPONSABILIDD');
   const [mensajeAdmin, setMensajeAdmin] = useState('');
 
-  // Alumnos
   const [busquedaDirector, setBusquedaDirector] = useState('');
   const [nuevoDniAlumno, setNuevoDniAlumno] = useState('');
   const [nuevoNombreAlumno, setNuevoNombreAlumno] = useState('');
@@ -451,7 +594,6 @@ export default function App() {
   const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('RESPONSABILIDD');
   const [nuevoCelularAlumno, setNuevoCelularAlumno] = useState('');
   
-  // Modal Edición Celular
   const [alumnoEditando, setAlumnoEditando] = useState(null);
   const [nuevoTelefonoEdit, setNuevoTelefonoEdit] = useState('');
 
@@ -460,7 +602,7 @@ export default function App() {
     if (!nuevoNombreDocente || !nuevoUserDocente || !nuevaClaveDocente) return;
 
     if (usuarios.some(u => u.usuario.toLowerCase() === nuevoUserDocente.trim().toLowerCase())) {
-      setMensajeAdmin('⚠️ Ese nombre de usuario ya está en uso. Elija otro.');
+      setMensajeAdmin('⚠️ Ese nombre de usuario ya está registrado.');
       return;
     }
 
@@ -478,7 +620,7 @@ export default function App() {
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
     setNuevaClaveDocente('');
-    setMensajeAdmin('✅ Docente registrado y aula asignada correctamente.');
+    setMensajeAdmin('✅ Docente creado y aula asignada exitosamente.');
     setTimeout(() => setMensajeAdmin(''), 3000);
   };
 
@@ -488,7 +630,6 @@ export default function App() {
     }
   };
 
-  // Agregar alumno individual
   const registrarAlumnoNuevo = (e) => {
     e.preventDefault();
     if (!nuevoNombreAlumno.trim()) return;
@@ -506,18 +647,16 @@ export default function App() {
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
     setNuevoCelularAlumno('');
-    setMensajeAdmin('✅ Alumno matriculado y agregado al padrón.');
+    setMensajeAdmin('✅ Alumno registrado correctamente en el padrón.');
     setTimeout(() => setMensajeAdmin(''), 3000);
   };
 
-  // Retirar alumno
   const retirarAlumno = (id, nombre) => {
-    if (window.confirm(`¿Confirmas el retiro o baja del estudiante "${nombre}" del colegio?`)) {
+    if (window.confirm(`¿Confirmas el retiro definitivo del estudiante "${nombre}"?`)) {
       setEstudiantes(prev => prev.filter(e => e.id !== id));
     }
   };
 
-  // Guardar nuevo celular del apoderado
   const guardarEdicionCelular = (e) => {
     e.preventDefault();
     if (!alumnoEditando) return;
@@ -528,54 +667,6 @@ export default function App() {
     setNuevoTelefonoEdit('');
   };
 
-  // Importar Excel (CSV)
-  const procesarArchivoCSV = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const lineas = text.split(/\r?\n/).filter(l => l.trim() !== '');
-        
-        if (lineas.length <= 1) {
-          alert('El archivo no contiene filas de estudiantes.');
-          return;
-        }
-
-        const delimitador = lineas[0].includes(';') ? ';' : ',';
-        const nuevosCargados = [];
-
-        for (let i = 1; i < lineas.length; i++) {
-          const columnas = lineas[i].split(delimitador).map(c => c.replace(/^"|"$/g, '').trim());
-          if (columnas.length >= 3 && columnas[1]) {
-            nuevosCargados.push({
-              id: Date.now() + i,
-              dni: columnas[0] || 'S/D',
-              name: columnas[1].toUpperCase(),
-              grade: (columnas[2] || 'PRIMERO').toUpperCase(),
-              section: (columnas[3] || 'RESPONSABILIDD').toUpperCase(),
-              phone: columnas[4] || '999999999'
-            });
-          }
-        }
-
-        if (nuevosCargados.length > 0) {
-          setEstudiantes(prev => [...prev, ...nuevosCargados]);
-          alert(`¡Éxito! Se cargaron e incorporaron ${nuevosCargados.length} estudiantes desde el archivo.`);
-        } else {
-          alert('No se pudo leer el formato. Descargue la plantilla de ejemplo para guiarse.');
-        }
-      } catch (err) {
-        alert('Hubo un error al procesar el archivo. Asegúrese de que sea formato CSV.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  // Filtro de búsqueda del Director (DNI, Nombre, Grado, Sección)
   const alumnosFiltradosDirector = useMemo(() => {
     if (!busquedaDirector.trim()) return estudiantes;
     const t = busquedaDirector.toUpperCase();
@@ -587,9 +678,7 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // ==========================================
-  // PANTALLA DE LOGIN
-  // ==========================================
+  // LOGIN
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
@@ -662,7 +751,6 @@ export default function App() {
           </form>
         </div>
 
-        {/* MODAL RECUPERAR CONTRASEÑA */}
         {modalRecuperar && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
@@ -671,21 +759,18 @@ export default function App() {
                   <HelpCircle className="w-5 h-5" />
                   <h3>Recuperar Contraseña</h3>
                 </div>
-                <button 
-                  onClick={() => setModalRecuperar(false)}
-                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-                >
+                <button onClick={() => setModalRecuperar(false)} className="text-slate-400 hover:text-slate-600 p-1">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Por motivos de seguridad institucional, las credenciales son administradas por la Dirección. Comuníquese directamente para solicitar su restablecimiento.
+                Por motivos de seguridad institucional, comuníquese con la Dirección para restablecer sus credenciales.
               </p>
 
               <div className="space-y-2">
                 <a
-                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito la recuperación de mi clave de acceso para el sistema de asistencia escolar.')}`}
+                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito la recuperación de mi clave de acceso al sistema.')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow"
@@ -707,9 +792,6 @@ export default function App() {
     );
   }
 
-  // ==========================================
-  // PANTALLA PRINCIPAL
-  // ==========================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
@@ -748,7 +830,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑAS DE NAVEGACIÓN */}
         <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/50">
           {(usuarioAutenticado.rol === 'director' || usuarioAutenticado.rol === 'docente') && (
             <button 
@@ -768,7 +849,7 @@ export default function App() {
                 rolActivo === 'auxiliar' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
             >
-              <Clock className="w-4 h-4" /> Control Puerta (8:00 AM)
+              <Clock className="w-4 h-4" /> Puerta (8:00 AM)
             </button>
           )}
 
@@ -787,7 +868,7 @@ export default function App() {
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-4 flex-1">
         
-        {/* VISTA DOCENTE */}
+        {/* AULA DOCENTE */}
         {rolActivo === 'docente' && (
           <div className="space-y-4">
             {!esDirector ? (
@@ -808,7 +889,7 @@ export default function App() {
             ) : (
               <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-amber-700 bg-amber-50 p-1.5 rounded-lg">
-                  <ShieldAlert className="w-4 h-4" /> Modo Supervisión (Director): Puedes auditar cualquier aula
+                  <ShieldAlert className="w-4 h-4" /> Modo Supervisión (Director)
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -850,9 +931,9 @@ export default function App() {
               <button
                 onClick={() => exportarAExcel('aula')}
                 className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold px-3 py-2.5 rounded-lg flex items-center gap-1.5 shadow transition-all shrink-0"
-                title="Descargar lista de asistencia en Excel"
+                title="Descargar asistencia de esta aula en formato oficial Excel"
               >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-300" /> Exportar Excel
+                <FileSpreadsheet className="w-4 h-4 text-emerald-300" /> Exportar a Excel (.xlsx)
               </button>
             </div>
 
@@ -922,18 +1003,18 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA AUXILIAR: PUERTA CON HORARIO LÍMITE (8:00 AM) */}
+        {/* PUERTA (AUXILIAR) */}
         {rolActivo === 'auxiliar' && (
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-bold text-slate-800 text-base">Control de Ingreso en Puerta</h2>
+                <h2 className="font-bold text-slate-800 text-base">Control Matutino de Ingreso</h2>
                 <div className="text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" /> Límite: 8:00 AM
                 </div>
               </div>
               <p className="text-xs text-slate-500 mb-3">
-                Busque por <b>DNI</b> o <b>Apellido</b>. El sistema clasificará en <b>Puntual</b> o <b>Tardanza</b> automáticamente según la hora:
+                Busque por <b>DNI</b> o <b>Apellidos</b>:
               </p>
               
               <div className="relative">
@@ -980,11 +1061,10 @@ export default function App() {
           </div>
         )}
 
-        {/* PANEL DIRECTOR / ADMINISTRADOR */}
+        {/* PANEL DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-4">
             
-            {/* SUB-MENU DIRECTOR */}
             <div className="flex bg-slate-200 p-1 rounded-xl">
               <button
                 onClick={() => setPestanaDirector('metricas')}
@@ -1000,7 +1080,7 @@ export default function App() {
                   pestanaDirector === 'alumnos' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🎓 Padrón y Alumnos
+                🎓 Padrón Escolar ({estudiantes.length})
               </button>
               <button
                 onClick={() => setPestanaDirector('docentes')}
@@ -1012,11 +1092,11 @@ export default function App() {
               </button>
             </div>
 
-            {/* SUBPESTAÑA: GESTIÓN COMPLETA DE ALUMNOS (PADRÓN, BUSCADOR DNI, EXCEL, EDITAR CELULAR) */}
+            {/* PADRÓN Y ALUMNOS (IMPORTACIÓN DIRECTA .XLSX) */}
             {pestanaDirector === 'alumnos' && (
               <div className="space-y-4">
                 
-                {/* BUSCADOR GENERAL DE ALUMNOS (DNI, NOMBRE, GRADO) */}
+                {/* BUSCADOR INSTITUCIONAL */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
                     <Search className="w-4 h-4 text-emerald-600" /> Buscador Institucional de Alumnos
@@ -1025,7 +1105,7 @@ export default function App() {
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Buscar por DNI, Apellidos, Nombres o Grado..."
+                      placeholder="Buscar por DNI, Apellidos, Nombres, Grado o Sección..."
                       value={busquedaDirector}
                       onChange={(e) => setBusquedaDirector(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1033,36 +1113,36 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* BOTONES DE IMPORTACIÓN EXCEL / CSV Y PLANTILLA */}
+                {/* IMPORTACIÓN EN FORMATO EXCEL REAL (.XLSX) */}
                 <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                       <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                      <span>Carga Masiva de Alumnos desde Excel</span>
+                      <span>Carga Masiva de Alumnos en Excel (.xlsx)</span>
                     </div>
                     <button
-                      onClick={descargarPlantillaCSV}
+                      onClick={descargarPlantillaExcel}
                       className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
                     >
-                      <Download className="w-3.5 h-3.5" /> Descargar Plantilla (.csv)
+                      <Download className="w-3.5 h-3.5" /> Descargar Modelo (.xlsx)
                     </button>
                   </div>
                   <p className="text-[11px] text-emerald-800 mb-3">
-                    Guarda tu Excel como archivo <b>CSV (delimitado por comas)</b> y súbelo para cargar todos los alumnos del colegio de una sola vez.
+                    Sube tu archivo de Excel <b>(.xlsx o .xls)</b> con la lista de los 463 estudiantes para incorporarlos directamente al sistema.
                   </p>
                   
                   <label className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow cursor-pointer transition">
-                    <Upload className="w-4 h-4" /> Subir archivo de alumnos (.csv)
+                    <Upload className="w-4 h-4" /> Subir Padrón en Excel (.xlsx)
                     <input 
                       type="file" 
-                      accept=".csv, text/csv, text/plain" 
-                      onChange={procesarArchivoCSV}
+                      accept=".xlsx, .xls, .csv" 
+                      onChange={procesarArchivoExcel}
                       className="hidden" 
                     />
                   </label>
                 </div>
 
-                {/* REGISTRAR ALUMNO INDIVIDUAL */}
+                {/* MATRICULAR INDIVIDUAL */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase mb-3">
                     <UserPlus className="w-4 h-4 text-emerald-600" />
@@ -1115,7 +1195,7 @@ export default function App() {
                         <label className="text-[11px] font-bold text-slate-500 uppercase">Sección</label>
                         <input
                           type="text"
-                          placeholder="Nombre de sección"
+                          placeholder="Sección"
                           value={nuevaSeccionAlumno}
                           onChange={(e) => setNuevaSeccionAlumno(e.target.value)}
                           className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
@@ -1143,7 +1223,7 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* LISTADO DE ESTUDIANTES ENCONTRADOS / TOTAL */}
+                {/* LISTA DE ESTUDIANTES */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold text-slate-700 uppercase">
@@ -1172,15 +1252,15 @@ export default function App() {
                               setNuevoTelefonoEdit(alumno.phone);
                             }}
                             className="bg-blue-50 text-blue-700 hover:bg-blue-100 p-2 rounded-lg text-xs font-bold flex items-center gap-1"
-                            title="Editar o aumentar celular"
+                            title="Editar número de celular"
                           >
                             <Edit className="w-3.5 h-3.5" /> Editar Cel
                           </button>
                           
                           <button
                             onClick={() => retirarAlumno(alumno.id, alumno.name)}
-                            className="bg-rose-50 text-rose-700 hover:bg-rose-100 p-2 rounded-lg transition"
-                            title="Dar de baja / Retirar alumno"
+                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition"
+                            title="Dar de baja al estudiante"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1190,7 +1270,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* MODAL DE EDICIÓN DE CELULAR */}
+                {/* MODAL EDITAR TELÉFONO */}
                 {alumnoEditando && (
                   <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
@@ -1228,7 +1308,7 @@ export default function App() {
               </div>
             )}
 
-            {/* SUBPESTAÑA: GESTIÓN DE DOCENTES */}
+            {/* GESTIÓN DE DOCENTES */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -1350,7 +1430,7 @@ export default function App() {
               </div>
             )}
 
-            {/* SUBPESTAÑA: REPORTES Y ASISTENCIA DEL DÍA */}
+            {/* REPORTES EXCEL DIRECTOR */}
             {pestanaDirector === 'metricas' && (
               <>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -1372,20 +1452,20 @@ export default function App() {
 
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-2.5 flex items-center gap-1.5">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Exportar Reportes Institucionales a Excel
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Exportar Reportes a Microsoft Excel (.xlsx)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       onClick={() => exportarAExcel('general_dia')}
                       className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition shadow-sm"
                     >
-                      <Download className="w-4 h-4 text-emerald-600" /> Asistencia General del Colegio (.xlsx)
+                      <Download className="w-4 h-4 text-emerald-600" /> Asistencia General (.xlsx)
                     </button>
                     <button
                       onClick={() => exportarAExcel('incidencias')}
                       className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition shadow-sm"
                     >
-                      <Download className="w-4 h-4 text-amber-600" /> Alertas de Riesgo (3+ Faltas/Tardanzas)
+                      <Download className="w-4 h-4 text-amber-600" /> Alertas de Riesgo (.xlsx)
                     </button>
                   </div>
                 </div>
