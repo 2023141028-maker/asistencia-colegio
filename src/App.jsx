@@ -5,7 +5,7 @@ import {
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit, Plus, Layers, Wifi, WifiOff, RefreshCw
+  Upload, Edit, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone
 } from 'lucide-react';
 
 // Carga asíncrona del motor de Microsoft Excel (.xlsx)
@@ -86,23 +86,21 @@ const ESTUDIANTES_INICIALES = [
 ];
 
 export default function App() {
-  // ESTADO DE CONECTIVIDAD E INTERNET
+  // ESTADO DE RED Y COLA OFFLINE
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline');
+    const local = localStorage.getItem('colegio_cola_offline_v7');
     return local ? JSON.parse(local) : [];
   });
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
-  // Guardar cola offline
   useEffect(() => {
-    localStorage.setItem('colegio_cola_offline', JSON.stringify(colaPendientes));
+    localStorage.setItem('colegio_cola_offline_v7', JSON.stringify(colaPendientes));
   }, [colaPendientes]);
 
-  // Función de Sincronización Masiva cuando vuelve el Internet
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline') || '[]');
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v7') || '[]');
     if (!navigator.onLine || colaActual.length === 0) return;
 
     setSincronizando(true);
@@ -128,22 +126,20 @@ export default function App() {
         }
         enviadosConExito++;
       } catch (err) {
-        console.warn('Reintento fallido para item:', item);
         restantes.push(item);
       }
     }
 
     setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline', JSON.stringify(restantes));
+    localStorage.setItem('colegio_cola_offline_v7', JSON.stringify(restantes));
     setSincronizando(false);
 
     if (enviadosConExito > 0) {
-      setAvisoSync(`¡Excelente! ${enviadosConExito} asistencia(s) guardadas sin internet se subieron a la nube.`);
+      setAvisoSync(`¡Conexión restablecida! Se sincronizaron ${enviadosConExito} registro(s) con la nube.`);
       setTimeout(() => setAvisoSync(''), 4500);
     }
   }, []);
 
-  // Escuchar eventos de conexión/desconexión automática
   useEffect(() => {
     const alConectar = () => {
       setEstaEnLinea(true);
@@ -166,35 +162,37 @@ export default function App() {
     };
   }, [sincronizarColaConSupabase]);
 
-  // Usuarios y Roles
+  // USUARIOS RESPALDADOS EN LA MEMORIA INTERNA
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v6');
+    const local = localStorage.getItem('colegio_usuarios_v7');
     return local ? JSON.parse(local) : USUARIOS_BASE;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v6', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v7', JSON.stringify(usuarios));
   }, [usuarios]);
 
+  // SESIÓN PERSISTENTE (OFFLINE-FIRST)
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v6');
+    const sesion = localStorage.getItem('colegio_sesion_v7');
     return sesion ? JSON.parse(sesion) : null;
   });
 
   const [inputUsuario, setInputUsuario] = useState('');
   const [inputClave, setInputClave] = useState('');
   const [mostrarClave, setMostrarClave] = useState(false);
+  const [recordarSesion, setRecordarSesion] = useState(true);
   const [modalRecuperar, setModalRecuperar] = useState(false);
   const [errorLogin, setErrorLogin] = useState('');
 
   // Padrón de Estudiantes
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v6');
+    const local = localStorage.getItem('colegio_estudiantes_v7');
     return local ? JSON.parse(local) : ESTUDIANTES_INICIALES;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v6', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v7', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
@@ -205,7 +203,7 @@ export default function App() {
     return local ? JSON.parse(local) : {};
   });
 
-  // Cargar asistencias desde Supabase
+  // Sincronizar asistencias si hay red
   useEffect(() => {
     const cargarDesdeSupabase = async () => {
       if (!navigator.onLine) return;
@@ -223,7 +221,7 @@ export default function App() {
           setAsistencias(prev => ({ ...prev, ...agrupadas }));
         }
       } catch (err) {
-        console.warn('Trabajando con datos locales debido a conexión inestable.');
+        console.warn('Conexión inestable. Se mantienen datos locales.');
       }
     };
     cargarDesdeSupabase();
@@ -233,8 +231,11 @@ export default function App() {
     localStorage.setItem('colegio_asistencias', JSON.stringify(asistencias));
   }, [asistencias]);
 
+  // LOGIN RESILIENTE (100% OPERATIVO SIN CONEXIÓN)
   const handleLogin = (e) => {
     e.preventDefault();
+    
+    // Busca en la memoria interna del teléfono
     const encontrado = usuarios.find(
       u => u.usuario.toLowerCase() === inputUsuario.trim().toLowerCase() && u.clave === inputClave
     );
@@ -242,7 +243,11 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
-      localStorage.setItem('colegio_sesion_v6', JSON.stringify(encontrado));
+      
+      // Guardar sesión en memoria para acceso continuo
+      if (recordarSesion) {
+        localStorage.setItem('colegio_sesion_v7', JSON.stringify(encontrado));
+      }
       setErrorLogin('');
       setInputClave('');
     } else {
@@ -252,7 +257,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUsuarioAutenticado(null);
-    localStorage.removeItem('colegio_sesion_v6');
+    localStorage.removeItem('colegio_sesion_v7');
   };
 
   const esDirector = usuarioAutenticado?.rol === 'director';
@@ -313,11 +318,9 @@ export default function App() {
     });
   };
 
-  // GUARDAR ASISTENCIA (ONLINE Y OFFLINE RESILIENTE)
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    // 1. Guardar de inmediato en la memoria local del celular
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       Object.keys(asistenciaAula).forEach(id => {
@@ -344,16 +347,14 @@ export default function App() {
       filas: filas
     };
 
-    // 2. Si no hay internet, mandar a cola offline
     if (!navigator.onLine) {
       setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
-      setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Modo Offline - Se subirá al volver internet)');
+      setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Modo Offline)');
       setGuardadoExitoso(true);
       setTimeout(() => setGuardadoExitoso(false), 3000);
       return;
     }
 
-    // 3. Si hay internet, intentar guardar en Supabase
     try {
       await supabase
         .from('asistencias')
@@ -366,15 +367,14 @@ export default function App() {
       setGuardadoExitoso(true);
       setTimeout(() => setGuardadoExitoso(false), 2500);
     } catch (err) {
-      // Si falló el envío por internet inestable, respaldar en la cola
       setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
-      setMensajeGuardado('Conexión inestable: Guardado en celular 📱 (Pendiente de subir)');
+      setMensajeGuardado('Sin señal: Guardado en celular 📱 (Pendiente de subir)');
       setGuardadoExitoso(true);
       setTimeout(() => setGuardadoExitoso(false), 3000);
     }
   };
 
-  // CONTROL DE PUERTA (ONLINE Y OFFLINE)
+  // CONTROL DE PUERTA
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -398,7 +398,6 @@ export default function App() {
     const esTarde = horas > 8 || (horas === 8 && minutos > 0);
     const estadoAsignado = esTarde ? 'T' : 'P';
 
-    // Guardado local inmediato
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumno.id] = { status: estadoAsignado, time: horaTexto };
@@ -406,9 +405,9 @@ export default function App() {
     });
 
     if (esTarde) {
-      setMensajePuerta(`⚠️ Tardanza: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Guardado local]' : ''}`);
+      setMensajePuerta(`⚠️ Tardanza: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Offline]' : ''}`);
     } else {
-      setMensajePuerta(`✅ Ingreso Puntual: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Guardado local]' : ''}`);
+      setMensajePuerta(`✅ Ingreso Puntual: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Offline]' : ''}`);
     }
     
     setBusquedaAux('');
@@ -793,11 +792,14 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // LOGIN
+  // ==========================================
+  // PANTALLA DE LOGIN CON MODO OFFLINE INCORPORADO
+  // ==========================================
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          
           <div className="bg-emerald-700 p-6 text-center text-white">
             <div className="w-16 h-16 bg-emerald-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
               <School className="w-9 h-9 text-emerald-200" />
@@ -807,6 +809,20 @@ export default function App() {
           </div>
 
           <form onSubmit={handleLogin} className="p-6 space-y-4">
+            
+            {/* DISTINTIVO DE CONEXIÓN EN LOGIN */}
+            {!estaEnLinea ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-2.5 rounded-xl flex items-center gap-2">
+                <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Modo Sin Señal: Tu inicio de sesión funcionará con las cuentas guardadas en este teléfono.</span>
+              </div>
+            ) : (
+              <div className="bg-emerald-50 text-emerald-800 text-[11px] font-bold p-2 rounded-xl flex items-center justify-center gap-1.5 border border-emerald-100">
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Acceso Offline Habilitado en este Dispositivo</span>
+              </div>
+            )}
+
             {errorLogin && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-lg flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
@@ -857,11 +873,25 @@ export default function App() {
               </div>
             </div>
 
+            {/* OPCIÓN RECORDAR SESIÓN */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="recordar"
+                checked={recordarSesion}
+                onChange={(e) => setRecordarSesion(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <label htmlFor="recordar" className="text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                Mantener sesión iniciada en este teléfono
+              </label>
+            </div>
+
             <button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all mt-3"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all mt-2"
             >
-              <Lock className="w-4 h-4" /> Iniciar Sesión
+              <Lock className="w-4 h-4" /> Iniciar Sesión {(!estaEnLinea) ? 'Sin Señal' : ''}
             </button>
           </form>
         </div>
@@ -910,7 +940,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
       
-      {/* BARRA DE ESTADO DE CONECTIVIDAD E INTERNET */}
+      {/* BANNERS DE CONEXIÓN */}
       {!estaEnLinea && (
         <div className="bg-amber-500 text-amber-950 px-4 py-2 text-xs font-black flex items-center justify-center gap-2 shadow-sm animate-pulse sticky top-0 z-40">
           <WifiOff className="w-4 h-4" />
@@ -918,7 +948,6 @@ export default function App() {
         </div>
       )}
 
-      {/* AVISO DE SINCRONIZACIÓN EXITOSA */}
       {avisoSync && (
         <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-black flex items-center justify-center gap-2 shadow-sm sticky top-0 z-40">
           <CheckCircle2 className="w-4 h-4" />
@@ -926,7 +955,6 @@ export default function App() {
         </div>
       )}
 
-      {/* BARRA DE ASISTENCIAS PENDIENTES DE SUBIR */}
       {colaPendientes.length > 0 && estaEnLinea && (
         <div className="bg-blue-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-sm sticky top-0 z-40">
           <div className="flex items-center gap-2">
