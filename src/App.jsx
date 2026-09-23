@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
@@ -58,18 +59,34 @@ export default function App() {
   const [asistencias, setAsistencias] = useState(() => {
     const local = localStorage.getItem('colegio_asistencias');
     if (local) return JSON.parse(local);
-    const mock = {};
-    const hoy = new Date().toISOString().split('T')[0];
-    mock[hoy] = {
-      2: { status: 'T', time: '08:14' },
-      4: { status: 'F', time: '08:00' },
-      11: { status: 'T', time: '08:22' },
-      14: { status: 'F', time: '08:00' }
-    };
-    return mock;
+    return {};
   });
 
-  // Guardar en Storage
+  // 1. CARGAR ASISTENCIAS EN TIEMPO REAL DESDE SUPABASE
+  useEffect(() => {
+    const cargarDesdeSupabase = async () => {
+      try {
+        const { data, error } = await supabase.from('asistencias').select('*');
+        if (!error && data && data.length > 0) {
+          const agrupadas = {};
+          data.forEach(reg => {
+            if (!agrupadas[reg.fecha]) agrupadas[reg.fecha] = {};
+            agrupadas[reg.fecha][reg.estudiante_id] = {
+              status: reg.estado,
+              time: reg.created_at ? new Date(reg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00'
+            };
+          });
+          setAsistencias(prev => ({ ...prev, ...agrupadas }));
+        }
+      } catch (err) {
+        console.error('Error al sincronizar con Supabase:', err);
+      }
+    };
+
+    cargarDesdeSupabase();
+  }, []);
+
+  // Guardar en Storage local como respaldo
   useEffect(() => {
     localStorage.setItem('colegio_estudiantes', JSON.stringify(estudiantes));
   }, [estudiantes]);
@@ -141,8 +158,11 @@ export default function App() {
     });
   };
 
-  const guardarAsistenciaAula = () => {
+  // 2. GUARDAR ASISTENCIA DE AULA EN SUPABASE
+  const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Actualizar pantalla local de inmediato
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       Object.keys(asistenciaAula).forEach(id => {
@@ -150,8 +170,36 @@ export default function App() {
       });
       return { ...prev, [fechaHoy]: dia };
     });
+
     setGuardadoExitoso(true);
     setTimeout(() => setGuardadoExitoso(false), 2500);
+
+    // Enviar registros a la tabla de Supabase en la nube
+    try {
+      const seccionCompleta = `${gradoSel} - ${seccionSel}`;
+      const filas = alumnosAula.map(alumno => ({
+        fecha: fechaHoy,
+        estudiante_id: alumno.id,
+        estudiante_nombre: alumno.name,
+        seccion: seccionCompleta,
+        estado: asistenciaAula[alumno.id] || 'P',
+        registrado_por: usuarioAutenticado?.nombre || 'Docente'
+      }));
+
+      // Evitar duplicados del mismo día y sección borrando el envío anterior antes de insertar
+      await supabase
+        .from('asistencias')
+        .delete()
+        .eq('fecha', fechaHoy)
+        .eq('seccion', seccionCompleta);
+
+      const { error } = await supabase.from('asistencias').insert(filas);
+      if (error) {
+        console.error('Error al insertar en Supabase:', error);
+      }
+    } catch (err) {
+      console.error('Error al conectar con Supabase:', err);
+    }
   };
 
   // Buscador de Puerta
@@ -164,16 +212,40 @@ export default function App() {
     return estudiantes.filter(e => e.name.includes(t) || e.grade.includes(t) || e.section.includes(t)).slice(0, 6);
   }, [busquedaAux, estudiantes]);
 
-  const registrarTardanzaPuerta = (alumno) => {
+  // 3. GUARDAR TARDANZA DE PUERTA EN SUPABASE
+  const registrarTardanzaPuerta = async (alumno) => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Actualizar vista local
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumno.id] = { status: 'T', time: hora };
       return { ...prev, [fechaHoy]: dia };
     });
+
     setMensajePuerta(`⚠️ Tardanza marcada: ${alumno.name} (${hora})`);
     setBusquedaAux('');
     setTimeout(() => setMensajePuerta(''), 3000);
+
+    // Enviar tardanza a Supabase
+    try {
+      await supabase
+        .from('asistencias')
+        .delete()
+        .eq('fecha', fechaHoy)
+        .eq('estudiante_id', alumno.id);
+
+      await supabase.from('asistencias').insert([{
+        fecha: fechaHoy,
+        estudiante_id: alumno.id,
+        estudiante_nombre: alumno.name,
+        seccion: `${alumno.grade} - ${alumno.section}`,
+        estado: 'T',
+        registrado_por: usuarioAutenticado?.nombre || 'Auxiliar de Puerta'
+      }]);
+    } catch (err) {
+      console.error('Error al registrar tardanza en Supabase:', err);
+    }
   };
 
   // Métricas Director
@@ -265,13 +337,12 @@ export default function App() {
             </div>
 
             <button 
-              type="submit"
+              type="submit" 
               className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all mt-2"
             >
               <Lock className="w-4 h-4" /> Ingresar al Sistema
             </button>
 
-            {/* Guía rápida de contraseñas de prueba para el desarrollo */}
             <div className="pt-3 border-t border-slate-200 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg">
               <p className="font-bold text-slate-700 mb-1">Cuentas autorizadas:</p>
               <ul className="space-y-0.5">
@@ -291,7 +362,6 @@ export default function App() {
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
-      {/* Barra Superior con botón de Cerrar Sesión */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -325,7 +395,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Pestañas restringidas según el rol del usuario */}
         <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/50">
           {(usuarioAutenticado.rol === 'director' || usuarioAutenticado.rol === 'docente') && (
             <button 
@@ -367,9 +436,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Contenido Principal */}
       <main className="max-w-2xl mx-auto w-full px-4 pt-4 flex-1">
-        {/* ==================== VISTA 1: EN AULA (DOCENTES) ==================== */}
+        {/* VISTA 1: DOCENTE EN AULA */}
         {rolActivo === 'docente' && (
           <div className="space-y-4">
             <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 gap-3">
@@ -461,7 +529,7 @@ export default function App() {
               >
                 {guardadoExitoso ? (
                   <>
-                    <Check className="w-6 h-6 text-white" /> ¡Asistencia Guardada con Éxito!
+                    <Check className="w-6 h-6 text-white" /> ¡Asistencia Guardada en la Nube!
                   </>
                 ) : (
                   <>
@@ -473,7 +541,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ==================== VISTA 2: EN PUERTA (AUXILIAR) ==================== */}
+        {/* VISTA 2: AUXILIAR EN PUERTA */}
         {rolActivo === 'auxiliar' && (
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -521,7 +589,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ==================== VISTA 3: PANEL DEL DIRECTOR ==================== */}
+        {/* VISTA 3: DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2.5">
@@ -582,7 +650,7 @@ export default function App() {
               )}
             </div>
 
-            {/* SEMÁFORO DE ALERTA: 3+ INCIDENCIAS */}
+            {/* SEMÁFORO DE ALERTA */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
