@@ -5,10 +5,10 @@ import {
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit, Plus
+  Upload, Edit, Plus, Layers
 } from 'lucide-react';
 
-// Carga asíncrona del motor oficial de Excel (.xlsx)
+// Carga asíncrona del motor de Microsoft Excel (.xlsx)
 const cargarLibreriaExcel = () => {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);
@@ -20,7 +20,7 @@ const cargarLibreriaExcel = () => {
   });
 };
 
-// Cuentas del personal
+// Cuentas base con soporte para múltiples aulas asignadas
 const USUARIOS_BASE = [
   { 
     id: 'dir_1', 
@@ -28,8 +28,7 @@ const USUARIOS_BASE = [
     clave: 'dir2026', 
     rol: 'director', 
     nombre: 'Dirección General',
-    gradoAsignado: 'TODOS',
-    seccionAsignada: 'TODAS'
+    aulasAsignadas: [] // El director tiene acceso a todo el colegio
   },
   { 
     id: 'aux_1', 
@@ -37,26 +36,30 @@ const USUARIOS_BASE = [
     clave: 'aux2026', 
     rol: 'auxiliar', 
     nombre: 'Auxiliar de Puerta',
-    gradoAsignado: 'TODOS',
-    seccionAsignada: 'TODAS'
+    aulasAsignadas: []
   },
   { 
     id: 'doc_1', 
     usuario: 'profesor1', 
     clave: 'doc2026', 
     rol: 'docente', 
-    nombre: 'Prof. Carlos Mendoza',
-    gradoAsignado: 'PRIMERO',
-    seccionAsignada: 'RESPONSABILIDD'
+    nombre: 'Prof. Carlos Mendoza (Matemáticas)',
+    aulasAsignadas: [
+      { grade: 'PRIMERO', section: 'RESPONSABILIDD' },
+      { grade: 'SEGUNDO', section: 'ANDRES AVELINO CACERES' },
+      { grade: 'TERCERO', section: 'CESAR VALLEJO' }
+    ]
   },
   { 
     id: 'doc_2', 
     usuario: 'docente', 
     clave: 'doc2026', 
     rol: 'docente', 
-    nombre: 'Prof. Rosa Huamán',
-    gradoAsignado: 'SEGUNDO',
-    seccionAsignada: 'ANDRES AVELINO CACERES'
+    nombre: 'Prof. Rosa Huamán (Comunicación)',
+    aulasAsignadas: [
+      { grade: 'PRIMERO', section: 'RESPONSABILIDD' },
+      { grade: 'CUARTO', section: 'NIKOLA TESLA' }
+    ]
   }
 ];
 
@@ -85,16 +88,19 @@ const ESTUDIANTES_INICIALES = [
 
 export default function App() {
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v4');
-    return local ? JSON.parse(local) : USUARIOS_BASE;
+    const local = localStorage.getItem('colegio_usuarios_v5');
+    if (local) {
+      try { return JSON.parse(local); } catch (e) {}
+    }
+    return USUARIOS_BASE;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v4', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v5', JSON.stringify(usuarios));
   }, [usuarios]);
 
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v4');
+    const sesion = localStorage.getItem('colegio_sesion_v5');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -106,12 +112,12 @@ export default function App() {
 
   // Padrón de Estudiantes
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v4');
+    const local = localStorage.getItem('colegio_estudiantes_v5');
     return local ? JSON.parse(local) : ESTUDIANTES_INICIALES;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v4', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v5', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
@@ -157,7 +163,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
-      localStorage.setItem('colegio_sesion_v4', JSON.stringify(encontrado));
+      localStorage.setItem('colegio_sesion_v5', JSON.stringify(encontrado));
       setErrorLogin('');
       setInputClave('');
     } else {
@@ -167,44 +173,45 @@ export default function App() {
 
   const handleLogout = () => {
     setUsuarioAutenticado(null);
-    localStorage.removeItem('colegio_sesion_v4');
+    localStorage.removeItem('colegio_sesion_v5');
   };
 
   const esDirector = usuarioAutenticado?.rol === 'director';
 
-  const gradosDisponibles = useMemo(() => {
-    if (esDirector) {
-      return [...new Set(estudiantes.map(e => e.grade))];
-    }
-    return [usuarioAutenticado?.gradoAsignado || 'PRIMERO'];
-  }, [estudiantes, esDirector, usuarioAutenticado]);
+  // Todas las aulas existentes en el colegio
+  const todasLasAulasColegio = useMemo(() => {
+    const mapa = new Map();
+    estudiantes.forEach(e => {
+      const clave = `${e.grade}|${e.section}`;
+      if (!mapa.has(clave)) {
+        mapa.set(clave, { grade: e.grade, section: e.section });
+      }
+    });
+    return Array.from(mapa.values());
+  }, [estudiantes]);
 
+  // Aulas a las que tiene acceso el usuario actual
+  const aulasPermitidasDocente = useMemo(() => {
+    if (esDirector) return todasLasAulasColegio;
+    return usuarioAutenticado?.aulasAsignadas && usuarioAutenticado.aulasAsignadas.length > 0
+      ? usuarioAutenticado.aulasAsignadas
+      : (todasLasAulasColegio.length > 0 ? [todasLasAulasColegio[0]] : []);
+  }, [esDirector, todasLasAulasColegio, usuarioAutenticado]);
+
+  // Estado del aula activa seleccionada
   const [gradoSel, setGradoSel] = useState('PRIMERO');
+  const [seccionSel, setSeccionSel] = useState('RESPONSABILIDD');
 
   useEffect(() => {
-    if (usuarioAutenticado) {
-      if (!esDirector) {
-        setGradoSel(usuarioAutenticado.gradoAsignado);
-      } else {
-        setGradoSel(gradosDisponibles[0] || 'PRIMERO');
+    if (aulasPermitidasDocente.length > 0) {
+      // Verificar si el aula actual aún está en las permitidas
+      const existe = aulasPermitidasDocente.some(a => a.grade === gradoSel && a.section === seccionSel);
+      if (!existe) {
+        setGradoSel(aulasPermitidasDocente[0].grade);
+        setSeccionSel(aulasPermitidasDocente[0].section);
       }
     }
-  }, [usuarioAutenticado, esDirector, gradosDisponibles]);
-
-  const seccionesDisponibles = useMemo(() => {
-    if (esDirector) {
-      return [...new Set(estudiantes.filter(e => e.grade === gradoSel).map(e => e.section))];
-    }
-    return [usuarioAutenticado?.seccionAsignada || 'RESPONSABILIDD'];
-  }, [estudiantes, gradoSel, esDirector, usuarioAutenticado]);
-
-  const [seccionSel, setSeccionSel] = useState('');
-
-  useEffect(() => {
-    if (seccionesDisponibles.length > 0) {
-      setSeccionSel(seccionesDisponibles[0]);
-    }
-  }, [gradoSel, seccionesDisponibles]);
+  }, [aulasPermitidasDocente, gradoSel, seccionSel]);
 
   const alumnosAula = useMemo(() => {
     return estudiantes.filter(e => e.grade === gradoSel && e.section === seccionSel);
@@ -267,7 +274,7 @@ export default function App() {
     }
   };
 
-  // Control de puerta con regla estricta (Límite 8:00 AM)
+  // Puerta (Auxiliar) con límite 8:00 AM
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -355,9 +362,7 @@ export default function App() {
     return { faltasHoy, tardanzasHoy, presentesHoy, enRiesgo, faltaronHoyLista, acumulados };
   }, [asistencias, estudiantes, fechaHoy]);
 
-  // ==========================================
-  // GENERACIÓN DE EXCEL REAL (.XLSX) PERFECTAMENTE ORDENADO
-  // ==========================================
+  // Exportar Excel oficial (.xlsx)
   const exportarAExcel = async (tipo = 'aula') => {
     try {
       const XLSX = await cargarLibreriaExcel();
@@ -372,7 +377,7 @@ export default function App() {
         datos.push(['Grado y Sección:', `${gradoSel} - ${seccionSel}`]);
         datos.push(['Docente Responsable:', usuarioAutenticado?.nombre || 'Docente']);
         datos.push(['Fecha:', fechaHoy]);
-        datos.push([]); // Espacio en blanco
+        datos.push([]);
         datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO', 'HORA', 'TELÉFONO APODERADO']);
 
         const diaActual = asistencias[fechaHoy] || {};
@@ -393,22 +398,15 @@ export default function App() {
         });
 
         anchosColumnas = [
-          { wch: 6 },
-          { wch: 12 },
-          { wch: 38 },
-          { wch: 14 },
-          { wch: 25 },
-          { wch: 14 },
-          { wch: 10 },
-          { wch: 18 }
+          { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 14 }, { wch: 10 }, { wch: 18 }
         ];
       } else if (tipo === 'general_dia') {
         nombreArchivo = `Reporte_General_Colegio_${fechaHoy}.xlsx`;
         datos.push(['CONSOLIDADO GENERAL DE ASISTENCIA INSTITUCIONAL']);
-        datos.push(['Fecha del Reporte:', fechaHoy]);
-        datos.push(['Total Alumnos Matriculados:', estudiantes.length]);
+        datos.push(['Fecha:', fechaHoy]);
+        datos.push(['Total Estudiantes:', estudiantes.length]);
         datos.push([]);
-        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO ASISTENCIA', 'HORA REGISTRO', 'TELÉFONO APODERADO']);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO', 'HORA', 'TELÉFONO APODERADO']);
 
         const diaActual = asistencias[fechaHoy] || {};
         estudiantes.forEach((alumno, i) => {
@@ -428,21 +426,14 @@ export default function App() {
         });
 
         anchosColumnas = [
-          { wch: 6 },
-          { wch: 12 },
-          { wch: 38 },
-          { wch: 14 },
-          { wch: 25 },
-          { wch: 16 },
-          { wch: 14 },
-          { wch: 18 }
+          { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 16 }, { wch: 14 }, { wch: 18 }
         ];
       } else if (tipo === 'incidencias') {
         nombreArchivo = `Alumnos_En_Riesgo_${fechaHoy}.xlsx`;
-        datos.push(['REPORTE DE ALUMNOS CON ALERTAS DISCIPLINARIAS (3+ FALTAS O TARDANZAS)']);
+        datos.push(['REPORTE DE ALUMNOS CON ALERTAS (3+ FALTAS O TARDANZAS)']);
         datos.push(['Fecha de Emisión:', fechaHoy]);
         datos.push([]);
-        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'TARDANZAS MES', 'FALTAS MES', 'CONDICIÓN', 'CONTACTO APODERADO']);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'TARDANZAS MES', 'FALTAS MES', 'CONDICIÓN', 'TELÉFONO APODERADO']);
 
         metricasDirector.enRiesgo.forEach((alumno, i) => {
           datos.push([
@@ -459,15 +450,7 @@ export default function App() {
         });
 
         anchosColumnas = [
-          { wch: 6 },
-          { wch: 12 },
-          { wch: 38 },
-          { wch: 14 },
-          { wch: 25 },
-          { wch: 15 },
-          { wch: 12 },
-          { wch: 26 },
-          { wch: 18 }
+          { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 26 }, { wch: 18 }
         ];
       }
 
@@ -498,7 +481,7 @@ export default function App() {
     }
   };
 
-  // LECTURA DIRECTA DE ARCHIVOS EXCEL (.XLSX / .XLS / .CSV)
+  // Carga Masiva de Alumnos en Excel (.xlsx, .xls)
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -512,7 +495,7 @@ export default function App() {
       const filas = XLSX.utils.sheet_to_json(hoja, { header: 1 });
 
       if (filas.length <= 1) {
-        alert('El archivo Excel seleccionado no contiene filas de estudiantes.');
+        alert('El archivo no contiene filas de estudiantes.');
         return;
       }
 
@@ -556,9 +539,9 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        alert(`¡Éxito total! Se incorporaron ${cargados.length} estudiantes desde el archivo Excel.`);
+        alert(`¡Padrón actualizado con éxito! Se cargaron ${cargados.length} estudiantes desde el archivo Excel.`);
       } else {
-        alert('No se detectaron estudiantes válidos. Verifique que el archivo tenga la columna de Nombres.');
+        alert('No se detectaron estudiantes válidos en el archivo.');
       }
     } catch (err) {
       alert('Error al procesar el archivo Excel: ' + err.message);
@@ -580,12 +563,20 @@ export default function App() {
   // Subpestañas del Director
   const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
+  // Docentes y Selección múltiple de aulas
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
   const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
-  const [nuevoGradoDocente, setNuevoGradoDocente] = useState('PRIMERO');
-  const [nuevaSeccionDocente, setNuevaSeccionDocente] = useState('RESPONSABILIDD');
+  const [aulasSeleccionadasNuevas, setAulasSeleccionadasNuevas] = useState([]);
   const [mensajeAdmin, setMensajeAdmin] = useState('');
+
+  const alternarSeleccionAula = (claveAula) => {
+    setAulasSeleccionadasNuevas(prev => 
+      prev.includes(claveAula)
+        ? prev.filter(c => c !== claveAula)
+        : [...prev, claveAula]
+    );
+  };
 
   const [busquedaDirector, setBusquedaDirector] = useState('');
   const [nuevoDniAlumno, setNuevoDniAlumno] = useState('');
@@ -606,21 +597,31 @@ export default function App() {
       return;
     }
 
+    if (aulasSeleccionadasNuevas.length === 0) {
+      setMensajeAdmin('⚠️ Debe seleccionar al menos un grado/sección para este docente.');
+      return;
+    }
+
+    const aulasAsignadas = aulasSeleccionadasNuevas.map(clave => {
+      const [grade, section] = clave.split('|');
+      return { grade, section };
+    });
+
     const nuevo = {
       id: `doc_${Date.now()}`,
       usuario: nuevoUserDocente.trim().toLowerCase(),
       clave: nuevaClaveDocente,
       rol: 'docente',
       nombre: nuevoNombreDocente.trim(),
-      gradoAsignado: nuevoGradoDocente,
-      seccionAsignada: nuevaSeccionDocente
+      aulasAsignadas: aulasAsignadas
     };
 
     setUsuarios(prev => [...prev, nuevo]);
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
     setNuevaClaveDocente('');
-    setMensajeAdmin('✅ Docente creado y aula asignada exitosamente.');
+    setAulasSeleccionadasNuevas([]);
+    setMensajeAdmin('✅ Docente creado con sus aulas asignadas exitosamente.');
     setTimeout(() => setMensajeAdmin(''), 3000);
   };
 
@@ -647,7 +648,7 @@ export default function App() {
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
     setNuevoCelularAlumno('');
-    setMensajeAdmin('✅ Alumno registrado correctamente en el padrón.');
+    setMensajeAdmin('✅ Alumno matriculado correctamente en el padrón.');
     setTimeout(() => setMensajeAdmin(''), 3000);
   };
 
@@ -868,57 +869,38 @@ export default function App() {
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-4 flex-1">
         
-        {/* AULA DOCENTE */}
+        {/* AULA DOCENTE: SELECTOR DE SUS AULAS ASIGNADAS */}
         {rolActivo === 'docente' && (
           <div className="space-y-4">
-            {!esDirector ? (
-              <div className="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-300 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-100 px-2 py-0.5 rounded">
-                    Aula Asignada por Dirección
-                  </span>
-                  <h3 className="text-base font-black text-slate-800 mt-1">
-                    {gradoSel} - {seccionSel}
-                  </h3>
-                  <p className="text-xs text-slate-500">Permisos exclusivos para calificar este salón.</p>
-                </div>
-                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center border border-emerald-200 text-emerald-700">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
+            
+            <div className="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> 
+                  {esDirector ? 'Modo Auditoría General' : `Tus Aulas Asignadas (${aulasPermitidasDocente.length})`}
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">Seleccionar aula a calificar</span>
               </div>
-            ) : (
-              <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-amber-700 bg-amber-50 p-1.5 rounded-lg">
-                  <ShieldAlert className="w-4 h-4" /> Modo Supervisión (Director)
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase">Grado</label>
-                    <select 
-                      value={gradoSel} 
-                      onChange={(e) => setGradoSel(e.target.value)}
-                      className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-700 text-sm"
-                    >
-                      {gradosDisponibles.map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase">Sección</label>
-                    <select 
-                      value={seccionSel} 
-                      onChange={(e) => setSeccionSel(e.target.value)}
-                      className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-700 text-sm"
-                    >
-                      {seccionesDisponibles.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+
+              {/* Selector de Aula asignada para el docente */}
+              <div className="relative">
+                <select 
+                  value={`${gradoSel}|${seccionSel}`} 
+                  onChange={(e) => {
+                    const [g, s] = e.target.value.split('|');
+                    setGradoSel(g);
+                    setSeccionSel(s);
+                  }}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-black text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500"
+                >
+                  {aulasPermitidasDocente.map(a => (
+                    <option key={`${a.grade}|${a.section}`} value={`${a.grade}|${a.section}`}>
+                      {a.grade} - {a.section}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
+            </div>
 
             <div className="flex items-center justify-between gap-2">
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800 flex items-center gap-2 flex-1">
@@ -931,75 +913,83 @@ export default function App() {
               <button
                 onClick={() => exportarAExcel('aula')}
                 className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold px-3 py-2.5 rounded-lg flex items-center gap-1.5 shadow transition-all shrink-0"
-                title="Descargar asistencia de esta aula en formato oficial Excel"
+                title="Descargar asistencia en Excel oficial (.xlsx)"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-300" /> Exportar a Excel (.xlsx)
               </button>
             </div>
 
             <div className="space-y-2">
-              {alumnosAula.map((alumno, index) => {
-                const estado = asistenciaAula[alumno.id] || 'P';
-                return (
-                  <div 
-                    key={alumno.id}
-                    onClick={() => alternarEstadoAlumno(alumno.id)}
-                    className={`cursor-pointer select-none p-3.5 rounded-xl border-2 transition-all flex items-center justify-between shadow-sm active:scale-[0.99] ${
-                      estado === 'P' 
-                        ? 'bg-emerald-50 border-emerald-300' 
-                        : estado === 'T' 
-                          ? 'bg-amber-50 border-amber-400' 
-                          : 'bg-rose-50 border-rose-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black text-slate-400 w-5">#{index + 1}</span>
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm leading-snug">{alumno.name}</p>
-                        <p className="text-[11px] text-slate-500">
-                          {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}Apoderado: {alumno.phone}
-                        </p>
+              {alumnosAula.length === 0 ? (
+                <div className="bg-white p-6 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+                  No hay alumnos matriculados en esta sección ({gradoSel} - {seccionSel}).
+                </div>
+              ) : (
+                alumnosAula.map((alumno, index) => {
+                  const estado = asistenciaAula[alumno.id] || 'P';
+                  return (
+                    <div 
+                      key={alumno.id}
+                      onClick={() => alternarEstadoAlumno(alumno.id)}
+                      className={`cursor-pointer select-none p-3.5 rounded-xl border-2 transition-all flex items-center justify-between shadow-sm active:scale-[0.99] ${
+                        estado === 'P' 
+                          ? 'bg-emerald-50 border-emerald-300' 
+                          : estado === 'T' 
+                            ? 'bg-amber-50 border-amber-400' 
+                            : 'bg-rose-50 border-rose-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black text-slate-400 w-5">#{index + 1}</span>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm leading-snug">{alumno.name}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}Apoderado: {alumno.phone}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center">
+                        {estado === 'P' && (
+                          <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
+                            <CheckCircle2 className="w-4 h-4" /> PRESENTE
+                          </div>
+                        )}
+                        {estado === 'T' && (
+                          <div className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
+                            <Clock className="w-4 h-4" /> TARDANZA
+                          </div>
+                        )}
+                        {estado === 'F' && (
+                          <div className="flex items-center gap-1.5 bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
+                            <XCircle className="w-4 h-4" /> FALTA
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center">
-                      {estado === 'P' && (
-                        <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
-                          <CheckCircle2 className="w-4 h-4" /> PRESENTE
-                        </div>
-                      )}
-                      {estado === 'T' && (
-                        <div className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
-                          <Clock className="w-4 h-4" /> TARDANZA
-                        </div>
-                      )}
-                      {estado === 'F' && (
-                        <div className="flex items-center gap-1.5 bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-sm">
-                          <XCircle className="w-4 h-4" /> FALTA
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
-            <div className="pt-2">
-              <button 
-                onClick={guardarAsistenciaAula}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-base transition-all"
-              >
-                {guardadoExitoso ? (
-                  <>
-                    <Check className="w-6 h-6 text-white" /> ¡Asistencia Guardada en la Nube!
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-6 h-6" /> Guardar Asistencia de {seccionSel}
-                  </>
-                )}
-              </button>
-            </div>
+            {alumnosAula.length > 0 && (
+              <div className="pt-2">
+                <button 
+                  onClick={guardarAsistenciaAula}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-base transition-all"
+                >
+                  {guardadoExitoso ? (
+                    <>
+                      <Check className="w-6 h-6 text-white" /> ¡Asistencia Guardada en la Nube!
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-6 h-6" /> Guardar Asistencia de {seccionSel}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1080,7 +1070,7 @@ export default function App() {
                   pestanaDirector === 'alumnos' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🎓 Padrón Escolar ({estudiantes.length})
+                🎓 Padrón ({estudiantes.length})
               </button>
               <button
                 onClick={() => setPestanaDirector('docentes')}
@@ -1088,15 +1078,14 @@ export default function App() {
                   pestanaDirector === 'docentes' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                👥 Asignar Aulas
+                👥 Asignar Múltiples Aulas
               </button>
             </div>
 
-            {/* PADRÓN Y ALUMNOS (IMPORTACIÓN DIRECTA .XLSX) */}
+            {/* PADRÓN Y ALUMNOS */}
             {pestanaDirector === 'alumnos' && (
               <div className="space-y-4">
                 
-                {/* BUSCADOR INSTITUCIONAL */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
                     <Search className="w-4 h-4 text-emerald-600" /> Buscador Institucional de Alumnos
@@ -1113,7 +1102,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* IMPORTACIÓN EN FORMATO EXCEL REAL (.XLSX) */}
                 <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
@@ -1128,7 +1116,7 @@ export default function App() {
                     </button>
                   </div>
                   <p className="text-[11px] text-emerald-800 mb-3">
-                    Sube tu archivo de Excel <b>(.xlsx o .xls)</b> con la lista de los 463 estudiantes para incorporarlos directamente al sistema.
+                    Sube tu archivo de Excel <b>(.xlsx o .xls)</b> con la lista completa de estudiantes.
                   </p>
                   
                   <label className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow cursor-pointer transition">
@@ -1142,7 +1130,6 @@ export default function App() {
                   </label>
                 </div>
 
-                {/* MATRICULAR INDIVIDUAL */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase mb-3">
                     <UserPlus className="w-4 h-4 text-emerald-600" />
@@ -1223,13 +1210,10 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* LISTA DE ESTUDIANTES */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold text-slate-700 uppercase">
-                      Padrón Activo ({alumnosFiltradosDirector.length} estudiantes)
-                    </h3>
-                  </div>
+                  <h3 className="text-xs font-bold text-slate-700 uppercase mb-3">
+                    Padrón Activo ({alumnosFiltradosDirector.length} estudiantes)
+                  </h3>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                     {alumnosFiltradosDirector.map(alumno => (
@@ -1252,7 +1236,7 @@ export default function App() {
                               setNuevoTelefonoEdit(alumno.phone);
                             }}
                             className="bg-blue-50 text-blue-700 hover:bg-blue-100 p-2 rounded-lg text-xs font-bold flex items-center gap-1"
-                            title="Editar número de celular"
+                            title="Editar celular"
                           >
                             <Edit className="w-3.5 h-3.5" /> Editar Cel
                           </button>
@@ -1270,12 +1254,11 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* MODAL EDITAR TELÉFONO */}
                 {alumnoEditando && (
                   <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-bold text-slate-800 text-sm">Actualizar Celular de Apoderado</h4>
+                        <h4 className="font-bold text-slate-800 text-sm">Actualizar Celular</h4>
                         <button onClick={() => setAlumnoEditando(null)} className="text-slate-400 hover:text-slate-600">
                           <X className="w-4 h-4" />
                         </button>
@@ -1285,7 +1268,7 @@ export default function App() {
                       </p>
                       <form onSubmit={guardarEdicionCelular} className="space-y-3">
                         <div>
-                          <label className="text-[11px] font-bold text-slate-500 uppercase">Nuevo Número de Celular</label>
+                          <label className="text-[11px] font-bold text-slate-500 uppercase">Nuevo Celular</label>
                           <input
                             type="tel"
                             value={nuevoTelefonoEdit}
@@ -1308,13 +1291,13 @@ export default function App() {
               </div>
             )}
 
-            {/* GESTIÓN DE DOCENTES */}
+            {/* GESTIÓN DE DOCENTES: ASIGNACIÓN MÚLTIPLE DE AULAS */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-2 text-emerald-800 font-bold mb-3">
                     <UserPlus className="w-5 h-5" />
-                    <h3>Designar Nueva Aula a Docente</h3>
+                    <h3>Registrar Docente y Asignar Grados / Secciones</h3>
                   </div>
 
                   {mensajeAdmin && (
@@ -1326,10 +1309,10 @@ export default function App() {
                   <form onSubmit={registrarDocente} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-500 uppercase">Nombre Completo</label>
+                        <label className="text-[11px] font-bold text-slate-500 uppercase">Nombre Completo y Especialidad</label>
                         <input
                           type="text"
-                          placeholder="Ej: Prof. Juan Pérez"
+                          placeholder="Ej: Prof. Juan Pérez (Matemáticas)"
                           value={nuevoNombreDocente}
                           onChange={(e) => setNuevoNombreDocente(e.target.value)}
                           required
@@ -1349,77 +1332,102 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-500 uppercase">Contraseña</label>
-                        <input
-                          type="text"
-                          placeholder="Clave de acceso"
-                          value={nuevaClaveDocente}
-                          onChange={(e) => setNuevaClaveDocente(e.target.value)}
-                          required
-                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
-                        />
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase">Contraseña</label>
+                      <input
+                        type="text"
+                        placeholder="Clave de acceso"
+                        value={nuevaClaveDocente}
+                        onChange={(e) => setNuevaClaveDocente(e.target.value)}
+                        required
+                        className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
+                      />
+                    </div>
+
+                    {/* SELECCIÓN MÚLTIPLE DE AULAS */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1">
+                          <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                          Selecciona las aulas que enseñará (Puedes marcar varias):
+                        </label>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                          {aulasSeleccionadasNuevas.length} seleccionadas
+                        </span>
                       </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-500 uppercase">Grado Asignado</label>
-                        <select
-                          value={nuevoGradoDocente}
-                          onChange={(e) => setNuevoGradoDocente(e.target.value)}
-                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
-                        >
-                          <option value="PRIMERO">PRIMERO</option>
-                          <option value="SEGUNDO">SEGUNDO</option>
-                          <option value="TERCERO">TERCERO</option>
-                          <option value="CUARTO">CUARTO</option>
-                          <option value="QUINTO">QUINTO</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-500 uppercase">Sección Asignada</label>
-                        <input
-                          type="text"
-                          placeholder="Sección asignada"
-                          value={nuevaSeccionDocente}
-                          onChange={(e) => setNuevaSeccionDocente(e.target.value)}
-                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
-                        />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        {todasLasAulasColegio.map(aula => {
+                          const clave = `${aula.grade}|${aula.section}`;
+                          const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
+                          return (
+                            <button
+                              type="button"
+                              key={clave}
+                              onClick={() => alternarSeleccionAula(clave)}
+                              className={`p-2.5 rounded-lg text-xs font-bold border text-left flex items-center justify-between transition-all ${
+                                estaMarcada 
+                                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' 
+                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{aula.grade} - {aula.section}</span>
+                              {estaMarcada ? (
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full border border-slate-300" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow transition"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow transition mt-2"
                     >
-                      <UserPlus className="w-4 h-4" /> Asignar Aula y Crear Docente
+                      <UserPlus className="w-4 h-4" /> Asignar Aulas y Crear Cuenta Docente
                     </button>
                   </form>
                 </div>
 
+                {/* LISTA DE DOCENTES Y SUS AULAS MÚLTIPLES */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-3 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-emerald-600" /> Docentes Registrados y sus Aulas Exclusivas
+                    <BookOpen className="w-4 h-4 text-emerald-600" /> Docentes Registrados y sus Aulas Asignadas
                   </h3>
 
                   <div className="space-y-2">
                     {usuarios.filter(u => u.rol === 'docente').map(doc => (
-                      <div key={doc.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                        <div>
+                      <div key={doc.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-3">
+                        <div className="flex-1">
                           <p className="font-bold text-slate-800 text-sm">{doc.nombre}</p>
                           <p className="text-[11px] text-slate-500 mt-0.5">
                             Usuario: <b>{doc.usuario}</b> | Clave: <code>{doc.clave}</code>
                           </p>
-                          <div className="mt-1">
-                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-300">
-                              Aula: {doc.gradoAsignado} - {doc.seccionAsignada}
-                            </span>
+                          
+                          {/* BADGES DE AULAS ASIGNADAS */}
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {doc.aulasAsignadas && doc.aulasAsignadas.length > 0 ? (
+                              doc.aulasAsignadas.map((a, i) => (
+                                <span 
+                                  key={i}
+                                  className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md"
+                                >
+                                  {a.grade} - {a.section}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Sin aulas asignadas</span>
+                            )}
                           </div>
                         </div>
 
                         <button
                           onClick={() => eliminarDocente(doc.id)}
                           className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition"
-                          title="Revocar acceso"
+                          title="Revocar acceso a este docente"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1430,7 +1438,7 @@ export default function App() {
               </div>
             )}
 
-            {/* REPORTES EXCEL DIRECTOR */}
+            {/* REPORTES DIRECTOR */}
             {pestanaDirector === 'metricas' && (
               <>
                 <div className="grid grid-cols-3 gap-2.5">
