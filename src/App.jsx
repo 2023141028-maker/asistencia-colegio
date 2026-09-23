@@ -1,11 +1,11 @@
 import { supabase } from './supabase';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit, Plus, Layers
+  Upload, Edit, Plus, Layers, Wifi, WifiOff, RefreshCw
 } from 'lucide-react';
 
 // Carga asíncrona del motor de Microsoft Excel (.xlsx)
@@ -20,7 +20,6 @@ const cargarLibreriaExcel = () => {
   });
 };
 
-// Cuentas base con soporte para múltiples aulas asignadas
 const USUARIOS_BASE = [
   { 
     id: 'dir_1', 
@@ -28,7 +27,7 @@ const USUARIOS_BASE = [
     clave: 'dir2026', 
     rol: 'director', 
     nombre: 'Dirección General',
-    aulasAsignadas: [] // El director tiene acceso a todo el colegio
+    aulasAsignadas: []
   },
   { 
     id: 'aux_1', 
@@ -87,20 +86,98 @@ const ESTUDIANTES_INICIALES = [
 ];
 
 export default function App() {
-  const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v5');
-    if (local) {
-      try { return JSON.parse(local); } catch (e) {}
+  // ESTADO DE CONECTIVIDAD E INTERNET
+  const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
+  const [colaPendientes, setColaPendientes] = useState(() => {
+    const local = localStorage.getItem('colegio_cola_offline');
+    return local ? JSON.parse(local) : [];
+  });
+  const [sincronizando, setSincronizando] = useState(false);
+  const [avisoSync, setAvisoSync] = useState('');
+
+  // Guardar cola offline
+  useEffect(() => {
+    localStorage.setItem('colegio_cola_offline', JSON.stringify(colaPendientes));
+  }, [colaPendientes]);
+
+  // Función de Sincronización Masiva cuando vuelve el Internet
+  const sincronizarColaConSupabase = useCallback(async () => {
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline') || '[]');
+    if (!navigator.onLine || colaActual.length === 0) return;
+
+    setSincronizando(true);
+    let enviadosConExito = 0;
+    const restantes = [];
+
+    for (const item of colaActual) {
+      try {
+        if (item.tipo === 'aula') {
+          await supabase
+            .from('asistencias')
+            .delete()
+            .eq('fecha', item.fecha)
+            .eq('seccion', item.seccion);
+          await supabase.from('asistencias').insert(item.filas);
+        } else if (item.tipo === 'puerta') {
+          await supabase
+            .from('asistencias')
+            .delete()
+            .eq('fecha', item.fecha)
+            .eq('estudiante_id', item.estudiante_id);
+          await supabase.from('asistencias').insert(item.filas);
+        }
+        enviadosConExito++;
+      } catch (err) {
+        console.warn('Reintento fallido para item:', item);
+        restantes.push(item);
+      }
     }
-    return USUARIOS_BASE;
+
+    setColaPendientes(restantes);
+    localStorage.setItem('colegio_cola_offline', JSON.stringify(restantes));
+    setSincronizando(false);
+
+    if (enviadosConExito > 0) {
+      setAvisoSync(`¡Excelente! ${enviadosConExito} asistencia(s) guardadas sin internet se subieron a la nube.`);
+      setTimeout(() => setAvisoSync(''), 4500);
+    }
+  }, []);
+
+  // Escuchar eventos de conexión/desconexión automática
+  useEffect(() => {
+    const alConectar = () => {
+      setEstaEnLinea(true);
+      sincronizarColaConSupabase();
+    };
+    const alDesconectar = () => {
+      setEstaEnLinea(false);
+    };
+
+    window.addEventListener('online', alConectar);
+    window.addEventListener('offline', alDesconectar);
+
+    if (navigator.onLine) {
+      sincronizarColaConSupabase();
+    }
+
+    return () => {
+      window.removeEventListener('online', alConectar);
+      window.removeEventListener('offline', alDesconectar);
+    };
+  }, [sincronizarColaConSupabase]);
+
+  // Usuarios y Roles
+  const [usuarios, setUsuarios] = useState(() => {
+    const local = localStorage.getItem('colegio_usuarios_v6');
+    return local ? JSON.parse(local) : USUARIOS_BASE;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v5', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v6', JSON.stringify(usuarios));
   }, [usuarios]);
 
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v5');
+    const sesion = localStorage.getItem('colegio_sesion_v6');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -112,12 +189,12 @@ export default function App() {
 
   // Padrón de Estudiantes
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v5');
+    const local = localStorage.getItem('colegio_estudiantes_v6');
     return local ? JSON.parse(local) : ESTUDIANTES_INICIALES;
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v5', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v6', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
@@ -128,8 +205,10 @@ export default function App() {
     return local ? JSON.parse(local) : {};
   });
 
+  // Cargar asistencias desde Supabase
   useEffect(() => {
     const cargarDesdeSupabase = async () => {
+      if (!navigator.onLine) return;
       try {
         const { data, error } = await supabase.from('asistencias').select('*');
         if (!error && data && data.length > 0) {
@@ -144,7 +223,7 @@ export default function App() {
           setAsistencias(prev => ({ ...prev, ...agrupadas }));
         }
       } catch (err) {
-        console.error('Error al sincronizar con Supabase:', err);
+        console.warn('Trabajando con datos locales debido a conexión inestable.');
       }
     };
     cargarDesdeSupabase();
@@ -163,7 +242,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
-      localStorage.setItem('colegio_sesion_v5', JSON.stringify(encontrado));
+      localStorage.setItem('colegio_sesion_v6', JSON.stringify(encontrado));
       setErrorLogin('');
       setInputClave('');
     } else {
@@ -173,12 +252,11 @@ export default function App() {
 
   const handleLogout = () => {
     setUsuarioAutenticado(null);
-    localStorage.removeItem('colegio_sesion_v5');
+    localStorage.removeItem('colegio_sesion_v6');
   };
 
   const esDirector = usuarioAutenticado?.rol === 'director';
 
-  // Todas las aulas existentes en el colegio
   const todasLasAulasColegio = useMemo(() => {
     const mapa = new Map();
     estudiantes.forEach(e => {
@@ -190,7 +268,6 @@ export default function App() {
     return Array.from(mapa.values());
   }, [estudiantes]);
 
-  // Aulas a las que tiene acceso el usuario actual
   const aulasPermitidasDocente = useMemo(() => {
     if (esDirector) return todasLasAulasColegio;
     return usuarioAutenticado?.aulasAsignadas && usuarioAutenticado.aulasAsignadas.length > 0
@@ -198,13 +275,11 @@ export default function App() {
       : (todasLasAulasColegio.length > 0 ? [todasLasAulasColegio[0]] : []);
   }, [esDirector, todasLasAulasColegio, usuarioAutenticado]);
 
-  // Estado del aula activa seleccionada
   const [gradoSel, setGradoSel] = useState('PRIMERO');
   const [seccionSel, setSeccionSel] = useState('RESPONSABILIDD');
 
   useEffect(() => {
     if (aulasPermitidasDocente.length > 0) {
-      // Verificar si el aula actual aún está en las permitidas
       const existe = aulasPermitidasDocente.some(a => a.grade === gradoSel && a.section === seccionSel);
       if (!existe) {
         setGradoSel(aulasPermitidasDocente[0].grade);
@@ -219,6 +294,7 @@ export default function App() {
 
   const [asistenciaAula, setAsistenciaAula] = useState({});
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
+  const [mensajeGuardado, setMensajeGuardado] = useState('');
 
   useEffect(() => {
     const diaActual = asistencias[fechaHoy] || {};
@@ -237,9 +313,11 @@ export default function App() {
     });
   };
 
+  // GUARDAR ASISTENCIA (ONLINE Y OFFLINE RESILIENTE)
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
+    // 1. Guardar de inmediato en la memoria local del celular
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       Object.keys(asistenciaAula).forEach(id => {
@@ -248,20 +326,35 @@ export default function App() {
       return { ...prev, [fechaHoy]: dia };
     });
 
-    setGuardadoExitoso(true);
-    setTimeout(() => setGuardadoExitoso(false), 2500);
+    const seccionCompleta = `${gradoSel} - ${seccionSel}`;
+    const filas = alumnosAula.map(alumno => ({
+      fecha: fechaHoy,
+      estudiante_id: alumno.id,
+      estudiante_nombre: alumno.name,
+      seccion: seccionCompleta,
+      estado: asistenciaAula[alumno.id] || 'P',
+      registrado_por: usuarioAutenticado?.nombre || 'Docente'
+    }));
 
+    const paquete = {
+      id: `aula_${Date.now()}`,
+      tipo: 'aula',
+      fecha: fechaHoy,
+      seccion: seccionCompleta,
+      filas: filas
+    };
+
+    // 2. Si no hay internet, mandar a cola offline
+    if (!navigator.onLine) {
+      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
+      setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Modo Offline - Se subirá al volver internet)');
+      setGuardadoExitoso(true);
+      setTimeout(() => setGuardadoExitoso(false), 3000);
+      return;
+    }
+
+    // 3. Si hay internet, intentar guardar en Supabase
     try {
-      const seccionCompleta = `${gradoSel} - ${seccionSel}`;
-      const filas = alumnosAula.map(alumno => ({
-        fecha: fechaHoy,
-        estudiante_id: alumno.id,
-        estudiante_nombre: alumno.name,
-        seccion: seccionCompleta,
-        estado: asistenciaAula[alumno.id] || 'P',
-        registrado_por: usuarioAutenticado?.nombre || 'Docente'
-      }));
-
       await supabase
         .from('asistencias')
         .delete()
@@ -269,12 +362,19 @@ export default function App() {
         .eq('seccion', seccionCompleta);
 
       await supabase.from('asistencias').insert(filas);
+      setMensajeGuardado('¡Asistencia Guardada en la Nube! ☁️');
+      setGuardadoExitoso(true);
+      setTimeout(() => setGuardadoExitoso(false), 2500);
     } catch (err) {
-      console.error('Error al sincronizar con Supabase:', err);
+      // Si falló el envío por internet inestable, respaldar en la cola
+      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
+      setMensajeGuardado('Conexión inestable: Guardado en celular 📱 (Pendiente de subir)');
+      setGuardadoExitoso(true);
+      setTimeout(() => setGuardadoExitoso(false), 3000);
     }
   };
 
-  // Puerta (Auxiliar) con límite 8:00 AM
+  // CONTROL DE PUERTA (ONLINE Y OFFLINE)
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -298,6 +398,7 @@ export default function App() {
     const esTarde = horas > 8 || (horas === 8 && minutos > 0);
     const estadoAsignado = esTarde ? 'T' : 'P';
 
+    // Guardado local inmediato
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumno.id] = { status: estadoAsignado, time: horaTexto };
@@ -305,13 +406,35 @@ export default function App() {
     });
 
     if (esTarde) {
-      setMensajePuerta(`⚠️ Tardanza: ${alumno.name} (${horaTexto})`);
+      setMensajePuerta(`⚠️ Tardanza: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Guardado local]' : ''}`);
     } else {
-      setMensajePuerta(`✅ Ingreso Puntual: ${alumno.name} (${horaTexto})`);
+      setMensajePuerta(`✅ Ingreso Puntual: ${alumno.name} (${horaTexto}) ${!navigator.onLine ? '📱 [Guardado local]' : ''}`);
     }
     
     setBusquedaAux('');
     setTimeout(() => setMensajePuerta(''), 3500);
+
+    const filaPuerta = [{
+      fecha: fechaHoy,
+      estudiante_id: alumno.id,
+      estudiante_nombre: alumno.name,
+      seccion: `${alumno.grade} - ${alumno.section}`,
+      estado: estadoAsignado,
+      registrado_por: usuarioAutenticado?.nombre || 'Auxiliar de Puerta'
+    }];
+
+    const paquetePuerta = {
+      id: `puerta_${Date.now()}`,
+      tipo: 'puerta',
+      fecha: fechaHoy,
+      estudiante_id: alumno.id,
+      filas: filaPuerta
+    };
+
+    if (!navigator.onLine) {
+      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'puerta' && p.fecha === fechaHoy && p.estudiante_id === alumno.id)), paquetePuerta]);
+      return;
+    }
 
     try {
       await supabase
@@ -320,16 +443,9 @@ export default function App() {
         .eq('fecha', fechaHoy)
         .eq('estudiante_id', alumno.id);
 
-      await supabase.from('asistencias').insert([{
-        fecha: fechaHoy,
-        estudiante_id: alumno.id,
-        estudiante_nombre: alumno.name,
-        seccion: `${alumno.grade} - ${alumno.section}`,
-        estado: estadoAsignado,
-        registrado_por: usuarioAutenticado?.nombre || 'Auxiliar de Puerta'
-      }]);
+      await supabase.from('asistencias').insert(filaPuerta);
     } catch (err) {
-      console.error('Error al registrar ingreso en Supabase:', err);
+      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'puerta' && p.fecha === fechaHoy && p.estudiante_id === alumno.id)), paquetePuerta]);
     }
   };
 
@@ -560,10 +676,8 @@ export default function App() {
     window.open(url, '_blank');
   };
 
-  // Subpestañas del Director
   const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
-  // Docentes y Selección múltiple de aulas
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
   const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
@@ -795,6 +909,41 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
+      
+      {/* BARRA DE ESTADO DE CONECTIVIDAD E INTERNET */}
+      {!estaEnLinea && (
+        <div className="bg-amber-500 text-amber-950 px-4 py-2 text-xs font-black flex items-center justify-center gap-2 shadow-sm animate-pulse sticky top-0 z-40">
+          <WifiOff className="w-4 h-4" />
+          <span>MODO OFFLINE (SIN INTERNET): Puedes seguir pasando lista. Todo se guarda en tu teléfono.</span>
+        </div>
+      )}
+
+      {/* AVISO DE SINCRONIZACIÓN EXITOSA */}
+      {avisoSync && (
+        <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-black flex items-center justify-center gap-2 shadow-sm sticky top-0 z-40">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{avisoSync}</span>
+        </div>
+      )}
+
+      {/* BARRA DE ASISTENCIAS PENDIENTES DE SUBIR */}
+      {colaPendientes.length > 0 && estaEnLinea && (
+        <div className="bg-blue-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-sm sticky top-0 z-40">
+          <div className="flex items-center gap-2">
+            <Wifi className="w-4 h-4 text-blue-200" />
+            <span>Tienes {colaPendientes.length} asistencia(s) guardadas en el teléfono pendientes de subir a la nube.</span>
+          </div>
+          <button
+            onClick={sincronizarColaConSupabase}
+            disabled={sincronizando}
+            className="bg-white text-blue-800 hover:bg-blue-50 px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1 shadow transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
+            {sincronizando ? 'Subiendo...' : 'Subir Ahora'}
+          </button>
+        </div>
+      )}
+
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -869,7 +1018,7 @@ export default function App() {
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-4 flex-1">
         
-        {/* AULA DOCENTE: SELECTOR DE SUS AULAS ASIGNADAS */}
+        {/* AULA DOCENTE */}
         {rolActivo === 'docente' && (
           <div className="space-y-4">
             
@@ -879,10 +1028,9 @@ export default function App() {
                   <ShieldCheck className="w-3.5 h-3.5" /> 
                   {esDirector ? 'Modo Auditoría General' : `Tus Aulas Asignadas (${aulasPermitidasDocente.length})`}
                 </span>
-                <span className="text-xs text-slate-400 font-semibold">Seleccionar aula a calificar</span>
+                <span className="text-xs text-slate-400 font-semibold">Aula activa</span>
               </div>
 
-              {/* Selector de Aula asignada para el docente */}
               <div className="relative">
                 <select 
                   value={`${gradoSel}|${seccionSel}`} 
@@ -980,7 +1128,7 @@ export default function App() {
                 >
                   {guardadoExitoso ? (
                     <>
-                      <Check className="w-6 h-6 text-white" /> ¡Asistencia Guardada en la Nube!
+                      <Check className="w-6 h-6 text-white" /> {mensajeGuardado}
                     </>
                   ) : (
                     <>
@@ -1085,7 +1233,6 @@ export default function App() {
             {/* PADRÓN Y ALUMNOS */}
             {pestanaDirector === 'alumnos' && (
               <div className="space-y-4">
-                
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
                     <Search className="w-4 h-4 text-emerald-600" /> Buscador Institucional de Alumnos
@@ -1291,7 +1438,7 @@ export default function App() {
               </div>
             )}
 
-            {/* GESTIÓN DE DOCENTES: ASIGNACIÓN MÚLTIPLE DE AULAS */}
+            {/* GESTIÓN DE DOCENTES */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -1344,7 +1491,6 @@ export default function App() {
                       />
                     </div>
 
-                    {/* SELECCIÓN MÚLTIPLE DE AULAS */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1">
@@ -1392,7 +1538,6 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* LISTA DE DOCENTES Y SUS AULAS MÚLTIPLES */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-3 flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4 text-emerald-600" /> Docentes Registrados y sus Aulas Asignadas
@@ -1407,7 +1552,6 @@ export default function App() {
                             Usuario: <b>{doc.usuario}</b> | Clave: <code>{doc.clave}</code>
                           </p>
                           
-                          {/* BADGES DE AULAS ASIGNADAS */}
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {doc.aulasAsignadas && doc.aulasAsignadas.length > 0 ? (
                               doc.aulasAsignadas.map((a, i) => (
