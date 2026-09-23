@@ -62,7 +62,7 @@ export default function App() {
     return {};
   });
 
-  // 1. CARGAR ASISTENCIAS EN TIEMPO REAL DESDE SUPABASE
+  // 1. Cargar asistencias desde Supabase en la nube
   useEffect(() => {
     const cargarDesdeSupabase = async () => {
       try {
@@ -86,7 +86,7 @@ export default function App() {
     cargarDesdeSupabase();
   }, []);
 
-  // Guardar en Storage local como respaldo
+  // Respaldo en Storage local
   useEffect(() => {
     localStorage.setItem('colegio_estudiantes', JSON.stringify(estudiantes));
   }, [estudiantes]);
@@ -95,7 +95,7 @@ export default function App() {
     localStorage.setItem('colegio_asistencias', JSON.stringify(asistencias));
   }, [asistencias]);
 
-  // Manejo de Inicio y Cierre de Sesión
+  // Manejo de Sesión
   const handleLogin = (e) => {
     e.preventDefault();
     const encontrado = USUARIOS_SISTEMA.find(
@@ -158,11 +158,10 @@ export default function App() {
     });
   };
 
-  // 2. GUARDAR ASISTENCIA DE AULA EN SUPABASE
+  // 2. Guardar asistencia de aula en la nube de Supabase
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    // Actualizar pantalla local de inmediato
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       Object.keys(asistenciaAula).forEach(id => {
@@ -174,7 +173,6 @@ export default function App() {
     setGuardadoExitoso(true);
     setTimeout(() => setGuardadoExitoso(false), 2500);
 
-    // Enviar registros a la tabla de Supabase en la nube
     try {
       const seccionCompleta = `${gradoSel} - ${seccionSel}`;
       const filas = alumnosAula.map(alumno => ({
@@ -186,7 +184,6 @@ export default function App() {
         registrado_por: usuarioAutenticado?.nombre || 'Docente'
       }));
 
-      // Evitar duplicados del mismo día y sección borrando el envío anterior antes de insertar
       await supabase
         .from('asistencias')
         .delete()
@@ -198,7 +195,7 @@ export default function App() {
         console.error('Error al insertar en Supabase:', error);
       }
     } catch (err) {
-      console.error('Error al conectar con Supabase:', err);
+      console.error('Error de red al conectar con Supabase:', err);
     }
   };
 
@@ -212,11 +209,10 @@ export default function App() {
     return estudiantes.filter(e => e.name.includes(t) || e.grade.includes(t) || e.section.includes(t)).slice(0, 6);
   }, [busquedaAux, estudiantes]);
 
-  // 3. GUARDAR TARDANZA DE PUERTA EN SUPABASE
+  // 3. Registrar tardanza en la nube de Supabase
   const registrarTardanzaPuerta = async (alumno) => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    // Actualizar vista local
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumno.id] = { status: 'T', time: hora };
@@ -227,7 +223,6 @@ export default function App() {
     setBusquedaAux('');
     setTimeout(() => setMensajePuerta(''), 3000);
 
-    // Enviar tardanza a Supabase
     try {
       await supabase
         .from('asistencias')
@@ -290,7 +285,7 @@ export default function App() {
   };
 
   // ==========================================
-  // PANTALLA 1: BLOQUEO DE SEGURIDAD / LOGIN
+  // PANTALLA 1: LOGIN
   // ==========================================
   if (!usuarioAutenticado) {
     return (
@@ -358,7 +353,7 @@ export default function App() {
   }
 
   // ==========================================
-  // PANTALLA 2: SISTEMA PRINCIPAL AUTORIZADO
+  // PANTALLA 2: SISTEMA PRINCIPAL
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
@@ -437,7 +432,7 @@ export default function App() {
       </header>
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-4 flex-1">
-        {/* VISTA 1: DOCENTE EN AULA */}
+        {/* VISTA DOCENTE */}
         {rolActivo === 'docente' && (
           <div className="space-y-4">
             <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 gap-3">
@@ -541,7 +536,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: AUXILIAR EN PUERTA */}
+        {/* VISTA AUXILIAR */}
         {rolActivo === 'auxiliar' && (
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -589,7 +584,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: DIRECTOR */}
+        {/* VISTA DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2.5">
@@ -609,7 +604,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* FALTAS DE HOY */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -650,7 +644,6 @@ export default function App() {
               )}
             </div>
 
-            {/* SEMÁFORO DE ALERTA */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
