@@ -61,24 +61,23 @@ const cargarLibreriaExcel = () => {
 };
 
 export default function App() {
-  // ESTADO DE CARGA GLOBAL INICIAL (Evita que el celular abra en blanco)
   const [cargandoInicial, setCargandoInicial] = useState(true);
 
   // RED Y COLA OFFLINE
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline_v15');
+    const local = localStorage.getItem('colegio_cola_offline_v16');
     return local ? JSON.parse(local) : [];
   });
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('colegio_cola_offline_v15', JSON.stringify(colaPendientes));
+    localStorage.setItem('colegio_cola_offline_v16', JSON.stringify(colaPendientes));
   }, [colaPendientes]);
 
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v15') || '[]');
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v16') || '[]');
     if (!navigator.onLine || colaActual.length === 0) return;
 
     setSincronizando(true);
@@ -103,7 +102,7 @@ export default function App() {
     }
 
     setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline_v15', JSON.stringify(restantes));
+    localStorage.setItem('colegio_cola_offline_v16', JSON.stringify(restantes));
     setSincronizando(false);
 
     if (enviadosConExito > 0) {
@@ -130,37 +129,37 @@ export default function App() {
     };
   }, [sincronizarColaConSupabase]);
 
-  // USUARIOS (SINCRONIZADOS DE SUPABASE Y LOCAL)
+  // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v15');
+    const local = localStorage.getItem('colegio_usuarios_v16');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v15', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v16', JSON.stringify(usuarios));
   }, [usuarios]);
 
   // PADRÓN DE ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v15');
+    const local = localStorage.getItem('colegio_estudiantes_v16');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v15', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v16', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
-    const local = localStorage.getItem('colegio_asistencias_v15');
+    const local = localStorage.getItem('colegio_asistencias_v16');
     return local ? JSON.parse(local) : {};
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_asistencias_v15', JSON.stringify(asistencias));
+    localStorage.setItem('colegio_asistencias_v16', JSON.stringify(asistencias));
   }, [asistencias]);
 
-  // DESCARGA INICIAL OBLIGATORIA DESDE SUPABASE AL ABRIR LA APP
+  // DESCARGA INICIAL DESDE SUPABASE
   useEffect(() => {
     const sincronizarNubeCompleta = async () => {
       if (!navigator.onLine) {
@@ -169,7 +168,6 @@ export default function App() {
       }
 
       try {
-        // 1. Cargar Usuarios
         const resUser = await supabase.from('usuarios').select('*');
         if (!resUser.error && resUser.data && resUser.data.length > 0) {
           const formateados = resUser.data.map(u => ({
@@ -181,17 +179,15 @@ export default function App() {
             aulasAsignadas: u.aulas_asignadas || []
           }));
           setUsuarios(formateados);
-          localStorage.setItem('colegio_usuarios_v15', JSON.stringify(formateados));
+          localStorage.setItem('colegio_usuarios_v16', JSON.stringify(formateados));
         }
 
-        // 2. Cargar Estudiantes
         const resEst = await supabase.from('estudiantes').select('*');
         if (!resEst.error && resEst.data && resEst.data.length > 0) {
           setEstudiantes(resEst.data);
-          localStorage.setItem('colegio_estudiantes_v15', JSON.stringify(resEst.data));
+          localStorage.setItem('colegio_estudiantes_v16', JSON.stringify(resEst.data));
         }
 
-        // 3. Cargar Asistencias
         const resAsis = await supabase.from('asistencias').select('*');
         if (!resAsis.error && resAsis.data && resAsis.data.length > 0) {
           const agrupadas = {};
@@ -203,10 +199,10 @@ export default function App() {
             };
           });
           setAsistencias(prev => ({ ...prev, ...agrupadas }));
-          localStorage.setItem('colegio_asistencias_v15', JSON.stringify(agrupadas));
+          localStorage.setItem('colegio_asistencias_v16', JSON.stringify(agrupadas));
         }
       } catch (err) {
-        console.warn('Conexión con Supabase lenta o sin red:', err);
+        console.warn('Conexión con Supabase:', err);
       } finally {
         setCargandoInicial(false);
       }
@@ -219,7 +215,7 @@ export default function App() {
     return usuarios.some(u => u.rol === 'director');
   }, [usuarios]);
 
-  // REGISTRO INICIAL DEL DIRECTOR
+  // REGISTRO INICIAL DIRECTOR
   const [primerNombreDirector, setPrimerNombreDirector] = useState('');
   const [primerUserDirector, setPrimerUserDirector] = useState('');
   const [primerClaveDirector, setPrimerClaveDirector] = useState('');
@@ -247,7 +243,6 @@ export default function App() {
     };
 
     try {
-      // Guardar de inmediato en Supabase con UPSERT
       const { error } = await supabase.from('usuarios').upsert([{
         id: directorNuevo.id,
         usuario: directorNuevo.usuario,
@@ -265,10 +260,10 @@ export default function App() {
 
       setUsuarios([directorNuevo]);
       setUsuarioAutenticado(directorNuevo);
-      localStorage.setItem('colegio_usuarios_v15', JSON.stringify([directorNuevo]));
-      localStorage.setItem('colegio_sesion_v15', JSON.stringify(directorNuevo));
+      localStorage.setItem('colegio_usuarios_v16', JSON.stringify([directorNuevo]));
+      localStorage.setItem('colegio_sesion_v16', JSON.stringify(directorNuevo));
     } catch (err) {
-      alert('Error de conexión al registrar: ' + err.message);
+      alert('Error al registrar: ' + err.message);
     } finally {
       setGuardandoDirector(false);
     }
@@ -276,7 +271,7 @@ export default function App() {
 
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v15');
+    const sesion = localStorage.getItem('colegio_sesion_v16');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -300,7 +295,7 @@ export default function App() {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
       if (recordarSesion) {
-        localStorage.setItem('colegio_sesion_v15', JSON.stringify(encontrado));
+        localStorage.setItem('colegio_sesion_v16', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -312,12 +307,12 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('colegio_sesion_v15');
+      localStorage.removeItem('colegio_sesion_v16');
     }
   };
 
   const restablecerSistemaDeFabrica = async () => {
-    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero tanto en este dispositivo como en la nube.\n\nEscriba "LIMPIAR" para confirmar:');
+    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero.\n\nEscriba "LIMPIAR" para confirmar:');
     if (claveSeguridad === 'LIMPIAR') {
       try {
         await supabase.from('usuarios').delete().neq('id', 'cero');
@@ -332,7 +327,6 @@ export default function App() {
   const esDirector = usuarioAutenticado?.rol === 'director';
   const esAuxiliar = usuarioAutenticado?.rol === 'auxiliar';
 
-  // Catálogo completo de aulas
   const todasLasAulasColegio = useMemo(() => {
     const mapa = new Map();
     AULAS_OFICIALES_DH.forEach(a => mapa.set(`${a.grade}|${a.section}`, a));
@@ -345,7 +339,6 @@ export default function App() {
     return Array.from(mapa.values());
   }, [estudiantes]);
 
-  // Aulas permitidas según rol
   const aulasPermitidasUsuario = useMemo(() => {
     if (esDirector) return todasLasAulasColegio;
     return usuarioAutenticado?.aulasAsignadas && usuarioAutenticado.aulasAsignadas.length > 0
@@ -445,7 +438,7 @@ export default function App() {
     }
   };
 
-  // CONTROL DE PUERTA / PABELLÓN
+  // CONTROL DE PUERTA (AUXILIAR CON SECCIONES A CARGO)
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -749,7 +742,9 @@ export default function App() {
     }
   };
 
-  // CARGA INTELIGENTE DE EXCEL
+  // =========================================================================
+  // CARGA INTELIGENTE ADAPTADA A SIAGIE Y FORMATOS EXCEL ESTÁNDAR
+  // =========================================================================
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -767,101 +762,104 @@ export default function App() {
         return;
       }
 
+      let isSiagie = false;
       let filaEncabezados = -1;
-      let colDni = -1, colNombre = -1, colGrado = -1, colSeccion = -1, colTelefono = -1;
+      let colDni = -1, colApePat = -1, colApeMat = -1, colNombres = -1, colNombreUnico = -1;
+      let colGrado = -1, colSeccion = -1, colTelefono = -1;
 
-      for (let r = 0; r < Math.min(filas.length, 12); r++) {
+      // Escanear los primeros 20 renglones
+      for (let r = 0; r < Math.min(filas.length, 20); r++) {
         const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
-        const tieneNombre = row.some(c => c.includes('NOMBRE') || c.includes('APELLIDO') || c.includes('ALUMNO') || c.includes('ESTUDIANTE'));
-        if (tieneNombre) {
-          filaEncabezados = r;
+        row.forEach((colText, idx) => {
+          const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (clean.includes('APELLIDO PATERNO')) { colApePat = idx; isSiagie = true; filaEncabezados = r; }
+          if (clean.includes('APELLIDO MATERNO')) { colApeMat = idx; }
+          if (clean === 'NOMBRES' || clean.includes('NOMBRE(S)')) { colNombres = idx; }
+          if (clean.includes('NUMERO DE DOCUMENTO') || clean.includes('NRO DOCUMENTO') || clean.includes('N° DOCUMENTO')) { colDni = idx; }
+          else if (colDni === -1 && (clean === 'DNI' || clean.includes('DOCUMENTO'))) { colDni = idx; }
+          if (clean.includes('GRADO') || clean.includes('ANO')) { colGrado = idx; }
+          if (clean.includes('SECCION') || clean.includes('AULA')) { colSeccion = idx; }
+          if (clean.includes('TEL') || clean.includes('CEL') || clean.includes('APODERADO')) { colTelefono = idx; }
+          if (!isSiagie && (clean.includes('APELLIDOS Y NOMBRES') || clean.includes('ESTUDIANTE') || clean.includes('ALUMNO'))) {
+            colNombreUnico = idx;
+            filaEncabezados = r;
+          }
+        });
+        if (isSiagie && colApePat !== -1 && colNombres !== -1) break;
+      }
+
+      // Si es formato SIAGIE pero grado y sección estaban en renglones anteriores (fila 10)
+      if (isSiagie && (colGrado === -1 || colSeccion === -1)) {
+        for (let r = 0; r < filaEncabezados; r++) {
+          const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
           row.forEach((colText, idx) => {
             const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (clean.includes('DNI') || clean.includes('DOCUMENTO') || clean.includes('IDENTIDAD') || clean === 'DOC' || clean.includes('CEDULA')) {
-              colDni = idx;
-            } else if (clean.includes('NOMBRE') || clean.includes('APELLIDO') || clean.includes('ALUMNO') || clean.includes('ESTUDIANTE')) {
-              colNombre = idx;
-            } else if (clean.includes('GRADO') || clean.includes('ANO') || clean.includes('NIVEL') || clean.includes('CICLO')) {
-              colGrado = idx;
-            } else if (clean.includes('SECCION') || clean.includes('AULA') || clean.includes('GRUPO')) {
-              colSeccion = idx;
-            } else if (clean.includes('TEL') || clean.includes('CEL') || clean.includes('APODERADO') || clean.includes('PADRE') || clean.includes('MOVIL')) {
-              colTelefono = idx;
-            }
+            if (clean.includes('GRADO') && colGrado === -1) colGrado = idx;
+            if (clean.includes('SECCION') && colSeccion === -1) colSeccion = idx;
           });
-          break;
         }
       }
+
+      // Mapeo canónico a las 30 secciones oficiales de la I.E.E. Daniel Hernández
+      const mapaSeccionesSIAGIE = {
+        'RESPONSABILIDD': 'RESPONSABILIDAD',
+        'DANIEL ALCIDES CARRION': 'D. A. CARRIÓN',
+        'JOSE DE SAN MARTIN': 'SAN MARTÍN',
+        'JOSE OLAYA': 'JOSÉ OLAYA',
+        'FRANCISCO BOLOGNESI': 'F. BOLOGNESI',
+        'ANDRES AVELINO CACERES': 'A. A. CÁCERES',
+        'ABRAHAM VALDELOMAR': 'A. VALDELOMAR',
+        'CIRO ALEGRIA': 'C. ALEGRÍA',
+        'JOSE CARLOS MAREATEGUI': 'J. C. MARIÁTEGUI',
+        'CESAR VALLEJO': 'C. VALLEJO',
+        'RICARDO PALMA': 'R. PALMA',
+        'MARIO VARGAS LLOSA': 'M. V. LLOSA',
+        'NIKOLA TESLA': 'N. TESLA',
+        'RENE DESCARTES': 'R. DESCARTES',
+        'PIERRE DE FERMAT': 'P. FERMAT',
+        'ISAAC NEWTON': 'I. NEWTON',
+        'THOMAS ALVA EDISON': 'T. ALVA',
+        'JHON CARL FRIEDRICH GAUSS': 'F. GAUSS',
+        'SOCRATES': 'SÓCRATES',
+        'TALES DE MILETO': 'T. MILETO',
+        'PLATON': 'PLATÓN',
+        'ARISTOTELES': 'ARISTÓTELES',
+        'PITAGORAS': 'PITÁGORAS',
+        'IMMANUEL KANT': 'I. KANT'
+      };
 
       const inicio = filaEncabezados !== -1 ? filaEncabezados + 1 : 1;
-      const muestra = filas.slice(inicio, inicio + 10).filter(r => r && r.length > 1);
-
-      if (muestra.length > 0) {
-        const maxCols = Math.max(...muestra.map(r => r.length));
-
-        const esColumnaSecuencial = (idx) => {
-          if (idx === -1) return true;
-          const vals = muestra.map(r => String(r[idx] || '').trim());
-          return vals.every(v => /^\d{1,4}$/.test(v));
-        };
-
-        if (colDni === -1 || esColumnaSecuencial(colDni)) {
-          for (let c = 0; c < maxCols; c++) {
-            if (c === colNombre) continue;
-            const vals = muestra.map(r => {
-              let v = String(r[c] || '').trim();
-              if (v.toLowerCase().includes('e+')) {
-                const num = Number(v);
-                if (!isNaN(num)) v = Math.round(num).toString();
-              }
-              return v.replace(/\D/g, '');
-            });
-
-            const sonDnis = vals.filter(v => v.length >= 7 && v.length <= 9);
-            if (sonDnis.length >= Math.ceil(vals.length * 0.5)) {
-              colDni = c;
-              break;
-            }
-          }
-        }
-
-        if (colNombre === -1) {
-          for (let c = 0; c < maxCols; c++) {
-            if (c === colDni) continue;
-            const vals = muestra.map(r => String(r[c] || '').trim());
-            if (vals.some(v => v.length > 5 && v.includes(' '))) {
-              colNombre = c;
-              break;
-            }
-          }
-        }
-      }
-
       const cargados = [];
 
       for (let i = inicio; i < filas.length; i++) {
         const fila = filas[i];
         if (!fila || fila.length === 0) continue;
-        
-        const nombre = (colNombre !== -1 ? String(fila[colNombre] || '') : '').trim().toUpperCase();
-        if (!nombre) continue;
 
-        let dniExtraido = colDni !== -1 ? String(fila[colDni] || '').trim() : '';
-        if (dniExtraido.toLowerCase().includes('e+')) {
-          const n = Number(dniExtraido);
-          if (!isNaN(n)) dniExtraido = Math.round(n).toString();
+        let nombreCompleto = '';
+        if (isSiagie && colApePat !== -1 && colNombres !== -1) {
+          const pat = String(fila[colApePat] || '').trim().toUpperCase();
+          const mat = colApeMat !== -1 ? String(fila[colApeMat] || '').trim().toUpperCase() : '';
+          const nom = String(fila[colNombres] || '').trim().toUpperCase();
+          nombreCompleto = `${pat} ${mat} ${nom}`.trim();
+        } else if (colNombreUnico !== -1) {
+          nombreCompleto = String(fila[colNombreUnico] || '').trim().toUpperCase();
         }
-        dniExtraido = dniExtraido.replace(/\D/g, '');
-        if (dniExtraido.length < 5) {
-          dniExtraido = 'S/D';
-        }
+
+        if (!nombreCompleto) continue;
+
+        let dniExtraido = colDni !== -1 ? String(fila[colDni] || '').replace(/\D/g, '').trim() : '';
+        if (dniExtraido.length < 5) dniExtraido = 'S/D';
+
+        let gradoVal = colGrado !== -1 ? String(fila[colGrado] || 'PRIMERO').trim().toUpperCase() : 'PRIMERO';
+        let seccionRaw = colSeccion !== -1 ? String(fila[colSeccion] || 'RESPONSABILIDAD').trim().toUpperCase() : 'RESPONSABILIDAD';
+        let seccionVal = mapaSeccionesSIAGIE[seccionRaw] || seccionRaw;
 
         cargados.push({
-          id: `est_${Date.now()}_${i}`,
+          id: `est_${dniExtraido !== 'S/D' ? dniExtraido : Date.now() + i}`,
           dni: dniExtraido,
-          name: nombre,
-          grade: colGrado !== -1 ? String(fila[colGrado] || 'PRIMERO').trim().toUpperCase() : 'PRIMERO',
-          section: colSeccion !== -1 ? String(fila[colSeccion] || 'RESPONSABILIDAD').trim().toUpperCase() : 'RESPONSABILIDAD',
+          name: nombreCompleto,
+          grade: gradoVal,
+          section: seccionVal,
           phone: colTelefono !== -1 ? String(fila[colTelefono] || '999999999').trim() : '999999999'
         });
       }
@@ -872,12 +870,12 @@ export default function App() {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
           const { error } = await supabase.from('estudiantes').insert(cargados);
           if (error) alert('Aviso Supabase: ' + error.message);
-          else alert(`¡Padrón procesado! Se cargaron ${cargados.length} estudiantes a la nube.`);
+          else alert(`¡Éxito! Se cargaron ${cargados.length} estudiantes del SIAGIE en la nube.`);
         } catch (err) {
           console.warn('Error al guardar en Supabase:', err);
         }
       } else {
-        alert('No se detectaron estudiantes válidos. Verifique que el archivo tenga la columna de Nombres.');
+        alert('No se detectaron estudiantes válidos. Verifique el archivo.');
       }
     } catch (err) {
       alert('Error al procesar el archivo Excel: ' + err.message);
@@ -1084,7 +1082,7 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // PANTALLA DE CARGA INICIAL (ESPERA A SUPABASE)
+  // VISTAS
   if (cargandoInicial) {
     return (
       <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
@@ -1099,7 +1097,6 @@ export default function App() {
     );
   }
 
-  // CASO A: NO HAY DIRECTOR EN LA NUBE (SISTEMA VIRGEN)
   if (!existeDirector) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1187,7 +1184,6 @@ export default function App() {
     );
   }
 
-  // CASO B: LOGIN NORMAL (EL DIRECTOR YA EXISTE)
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1326,7 +1322,6 @@ export default function App() {
     );
   }
 
-  // CASO C: APLICACIÓN PRINCIPAL
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
       {!estaEnLinea && (
@@ -1934,7 +1929,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-xs">
                       <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                      <span>Carga Masiva Excel (.xlsx)</span>
+                      <span>Carga Masiva Excel / SIAGIE (.xlsx)</span>
                     </div>
                     <button
                       onClick={descargarPlantillaExcel}
