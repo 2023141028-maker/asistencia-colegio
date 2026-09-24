@@ -8,7 +8,7 @@ import {
   Upload, Edit3, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
   Loader2, Footprints, FileText, UserCog, CloudUpload, ClipboardCheck,
-  Settings, CheckCircle
+  Settings, UserCheck2
 } from 'lucide-react';
 
 // Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
@@ -50,7 +50,6 @@ const AULAS_OFICIALES_DH = [
   { grade: 'QUINTO', section: 'I. KANT' }
 ];
 
-// Timeout de auxilio para conexiones lentas (2.5s)
 const conLimiteDeTiempo = (promesa, ms = 2500) => {
   return Promise.race([
     promesa,
@@ -76,7 +75,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v20');
+      const local = localStorage.getItem('dh_cola_offline_v21');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -89,7 +88,7 @@ export default function App() {
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v20') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]');
     } catch {
       colaActual = [];
     }
@@ -130,11 +129,11 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v20', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v21', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
-      setAvisoSync(`¡Conexión lista! Se sincronizaron ${subidosConExito} registro(s) con la nube.`);
+      setAvisoSync(`¡Conexión restaurada! Se sincronizaron ${subidosConExito} registro(s) con la nube.`);
       setTimeout(() => setAvisoSync(''), 4500);
     }
   }, []);
@@ -158,17 +157,17 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v20');
+      const local = localStorage.getItem('dh_usuarios_v21');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
     }
   });
 
-  // PADRÓN DE ESTUDIANTES
+  // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v20');
+      const local = localStorage.getItem('dh_estudiantes_v21');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -178,14 +177,14 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v20');
+      const local = localStorage.getItem('dh_asistencias_v21');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
     }
   });
 
-  // CARGA INICIAL
+  // CARGA INICIAL DESDE SUPABASE
   useEffect(() => {
     let montado = true;
 
@@ -203,13 +202,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v20', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v21', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v20', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v21', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -223,7 +222,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v20', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v21', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -270,8 +269,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v20', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v20', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v21', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v21', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -292,10 +291,10 @@ export default function App() {
     }
   };
 
-  // SESIÓN ACTUAL
+  // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v20');
+      const sesion = localStorage.getItem('dh_sesion_v21');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -311,14 +310,10 @@ export default function App() {
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
 
-  // NAVEGACIÓN SIMPLIFICADA (SOLO 3 VISTAS PRINCIPALES)
-  // 'asistencia' (Control visual de alumnos y rondas)
-  // 'reportes' (Descargas Excel)
-  // 'gestion' (Docentes, Auxiliares y Alumnos)
-  const [vistaDirector, setVistaDirector] = useState('asistencia');
-
-  // Sub-vista para Auxiliares: 'salones' o 'puerta'
-  const [subVistaAuxiliar, setSubVistaAuxiliar] = useState('salones');
+  // NAVEGACIÓN PRINCIPAL
+  const [vistaDirector, setVistaDirector] = useState('asistencia'); // 'asistencia', 'reportes', 'gestion'
+  const [subPestanaGestion, setSubPestanaGestion] = useState('personal'); // 'personal', 'estudiantes'
+  const [subVistaAuxiliar, setSubVistaAuxiliar] = useState('salones'); // 'salones', 'puerta'
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -329,7 +324,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v20', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v21', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -341,7 +336,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v20');
+      localStorage.removeItem('dh_sesion_v21');
     }
   };
 
@@ -403,18 +398,16 @@ export default function App() {
   const cambiarEstadoAlumno = (alumnoId, nuevoEstado) => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 1. Guardar en memoria local
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v20', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v21', JSON.stringify(res));
       return res;
     });
 
     setAsistenciaAula(prev => ({ ...prev, [alumnoId]: nuevoEstado }));
 
-    // 2. Buscar datos del alumno para guardar en Supabase o encolar
     const alum = estudiantes.find(e => String(e.id) === String(alumnoId));
     if (!alum) return;
 
@@ -437,10 +430,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v20') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v20', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -451,14 +444,13 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v20') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v20', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
     });
   };
 
-  // ROTACIÓN CON 1 TOQUE: P -> T -> F -> E -> J -> P
   const alternarEstadoAlumno = (id) => {
     const actual = asistenciaAula[id] || 'P';
     const siguiente = 
@@ -479,7 +471,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v20', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v21', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -500,10 +492,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v20') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v20', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -527,10 +519,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v20') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v20', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -540,7 +532,7 @@ export default function App() {
     }
   };
 
-  // BUSCADOR UNIVERSAL DE ESTUDIANTES PARA EL DIRECTOR
+  // BUSCADOR UNIVERSAL
   const [busquedaUniversal, setBusquedaUniversal] = useState('');
   
   const estudiantesFiltradosBuscador = useMemo(() => {
@@ -554,7 +546,7 @@ export default function App() {
     ).slice(0, 10);
   }, [busquedaUniversal, estudiantes]);
 
-  // MÉTRICAS Y CONTEOS GENERALES
+  // MÉTRICAS
   const metricasDirector = useMemo(() => {
     const dia = asistencias[fechaHoy] || {};
     let faltasHoy = 0;
@@ -572,25 +564,11 @@ export default function App() {
       else presentesHoy++;
     });
 
-    const acumulados = estudiantes.map(e => {
-      let tCount = 0;
-      let fCount = 0;
-      let eCount = 0;
-      let jCount = 0;
-      Object.values(asistencias).forEach(diaReg => {
-        if (diaReg[e.id]?.status === 'T') tCount++;
-        if (diaReg[e.id]?.status === 'F') fCount++;
-        if (diaReg[e.id]?.status === 'E') eCount++;
-        if (diaReg[e.id]?.status === 'J') jCount++;
-      });
-      return { ...e, tardanzasMes: tCount, faltasMes: fCount, evasionesMes: eCount, permisosMes: jCount };
-    });
-
     const faltaronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'F');
     const evadieronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'E');
     const permisoHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'J');
 
-    return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista, acumulados };
+    return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista };
   }, [asistencias, estudiantes, fechaHoy]);
 
   // REPORTES EXCEL
@@ -778,7 +756,6 @@ export default function App() {
     }
   };
 
-  // ENVÍO DE WHATSAPP
   const enviarWhatsApp = (alumno, tipoAlerta) => {
     let mensaje = '';
     if (tipoAlerta === 'evasion') {
@@ -792,14 +769,107 @@ export default function App() {
     window.open(url, '_blank');
   };
 
-  // GESTIÓN DE PERSONAL Y EDICIÓN
+  // =========================================================================
+  // GESTIÓN DE PERSONAL (CREAR, EDITAR Y ELIMINAR)
+  // =========================================================================
+  const [nuevoRolPersonal, setNuevoRolPersonal] = useState('docente');
+  const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
+  const [nuevoUserDocente, setNuevoUserDocente] = useState('');
+  const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
+  const [aulasSeleccionadasNuevas, setAulasSeleccionadasNuevas] = useState([]);
+  const [mensajeAdmin, setMensajeAdmin] = useState('');
+
+  const alternarSeleccionAula = (claveAula) => {
+    setAulasSeleccionadasNuevas(prev => 
+      prev.includes(claveAula) ? prev.filter(c => c !== claveAula) : [...prev, claveAula]
+    );
+  };
+
+  const alternarGradoCompleto = (gradoNombre) => {
+    const aulasDelGrado = todasLasAulasColegio.filter(a => a.grade === gradoNombre).map(a => `${a.grade}|${a.section}`);
+    const todasMarcadas = aulasDelGrado.every(c => aulasSeleccionadasNuevas.includes(c));
+
+    if (todasMarcadas) {
+      setAulasSeleccionadasNuevas(prev => prev.filter(c => !aulasDelGrado.includes(c)));
+    } else {
+      setAulasSeleccionadasNuevas(prev => Array.from(new Set([...prev, ...aulasDelGrado])));
+    }
+  };
+
+  const registrarPersonal = async (e) => {
+    e.preventDefault();
+    if (!nuevoNombreDocente || !nuevoUserDocente || !nuevaClaveDocente) return;
+
+    if (usuarios.some(u => u.usuario.toLowerCase() === nuevoUserDocente.trim().toLowerCase())) {
+      setMensajeAdmin('⚠️ Ese nombre de usuario ya está en uso.');
+      return;
+    }
+
+    if (aulasSeleccionadasNuevas.length === 0) {
+      setMensajeAdmin('⚠️ Debe marcar al menos un grado o sección para este personal.');
+      return;
+    }
+
+    const aulasAsignadas = aulasSeleccionadasNuevas.map(clave => {
+      const [grade, section] = clave.split('|');
+      return { grade, section };
+    });
+
+    const nuevo = {
+      id: `usr_${Date.now()}`,
+      usuario: nuevoUserDocente.trim().toLowerCase(),
+      clave: nuevaClaveDocente.trim(),
+      rol: nuevoRolPersonal,
+      nombre: nuevoNombreDocente.trim(),
+      aulasAsignadas: aulasAsignadas
+    };
+
+    const nuevosUsuarios = [...usuarios, nuevo];
+    setUsuarios(nuevosUsuarios);
+    localStorage.setItem('dh_usuarios_v21', JSON.stringify(nuevosUsuarios));
+
+    setNuevoNombreDocente('');
+    setNuevoUserDocente('');
+    setNuevaClaveDocente('');
+    setAulasSeleccionadasNuevas([]);
+    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : 'Auxiliar'} registrado exitosamente.`);
+    setTimeout(() => setMensajeAdmin(''), 3500);
+
+    try {
+      await conLimiteDeTiempo(
+        supabase.from('usuarios').upsert([{
+          id: nuevo.id,
+          usuario: nuevo.usuario,
+          clave: nuevo.clave,
+          rol: nuevo.rol,
+          nombre: nuevo.nombre,
+          aulas_asignadas: nuevo.aulasAsignadas
+        }]),
+        3000
+      );
+    } catch (err) {
+      console.warn('Usuario guardado en memoria.');
+    }
+  };
+
+  const eliminarDocente = async (id) => {
+    if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
+      const restantes = usuarios.filter(u => u.id !== id);
+      setUsuarios(restantes);
+      localStorage.setItem('dh_usuarios_v21', JSON.stringify(restantes));
+      try {
+        await supabase.from('usuarios').delete().eq('id', id);
+      } catch (e) {}
+    }
+  };
+
+  // MODAL EDICIÓN PERSONAL
   const [personalEditando, setPersonalEditando] = useState(null);
   const [editNombrePersonal, setEditNombrePersonal] = useState('');
   const [editUserPersonal, setEditUserPersonal] = useState('');
   const [editClavePersonal, setEditClavePersonal] = useState('');
   const [editRolPersonal, setEditRolPersonal] = useState('docente');
   const [editAulasPersonal, setEditAulasPersonal] = useState([]);
-  const [mensajeAdmin, setMensajeAdmin] = useState('');
 
   const abrirModalEditarPersonal = (p) => {
     setPersonalEditando(p);
@@ -847,7 +917,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v20', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v21', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -858,7 +928,7 @@ export default function App() {
         aulas_asignadas: personalActualizado.aulasAsignadas
       }).eq('id', personalEditando.id);
 
-      setMensajeAdmin('✅ Datos actualizados en la nube.');
+      setMensajeAdmin('✅ Datos del personal actualizados en la nube.');
       setTimeout(() => setMensajeAdmin(''), 3000);
     } catch (err) {
       setMensajeAdmin('✅ Guardado en memoria.');
@@ -868,254 +938,269 @@ export default function App() {
     setPersonalEditando(null);
   };
 
-  // PANTALLA INICIAL DE CARGA
-  if (cargandoInicial) {
-    return (
-      <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
-        <div className="w-16 h-16 bg-emerald-900 rounded-3xl flex items-center justify-center shadow-2xl mb-4 border border-emerald-600 animate-bounce">
-          <School className="w-8 h-8 text-emerald-300" />
-        </div>
-        <h2 className="text-lg font-black tracking-tight">I.E.E. "Daniel Hernández"</h2>
-        <p className="text-xs text-emerald-200 mt-1 flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" /> Verificando sistema...
-        </p>
-      </div>
+  // =========================================================================
+  // GESTIÓN DE ESTUDIANTES (MATRICULAR, SUBIR EXCEL, EDITAR Y RETIRAR)
+  // =========================================================================
+  const [nuevoDniAlumno, setNuevoDniAlumno] = useState('');
+  const [nuevoNombreAlumno, setNuevoNombreAlumno] = useState('');
+  const [nuevoGradoAlumno, setNuevoGradoAlumno] = useState('PRIMERO');
+  const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('RESPONSABILIDAD');
+  const [nuevoCelularAlumno, setNuevoCelularAlumno] = useState('');
+  const [busquedaPadrón, setBusquedaPadrón] = useState('');
+
+  const registrarAlumnoNuevo = async (e) => {
+    e.preventDefault();
+    if (!nuevoNombreAlumno.trim()) return;
+
+    const nuevo = {
+      id: `est_${nuevoDniAlumno.trim() || Date.now()}`,
+      dni: nuevoDniAlumno.trim() || 'S/D',
+      name: nuevoNombreAlumno.trim().toUpperCase(),
+      grade: nuevoGradoAlumno,
+      section: nuevaSeccionAlumno,
+      phone: nuevoCelularAlumno.trim() || '999999999'
+    };
+
+    const listaActualizada = [...estudiantes, nuevo];
+    setEstudiantes(listaActualizada);
+    localStorage.setItem('dh_estudiantes_v21', JSON.stringify(listaActualizada));
+
+    setNuevoDniAlumno('');
+    setNuevoNombreAlumno('');
+    setNuevoCelularAlumno('');
+    setMensajeAdmin('✅ Estudiante matriculado correctamente.');
+    setTimeout(() => setMensajeAdmin(''), 3000);
+
+    try {
+      await supabase.from('estudiantes').insert([nuevo]);
+    } catch (err) {
+      console.warn('Estudiante guardado localmente.');
+    }
+  };
+
+  const retirarAlumno = async (id, nombre) => {
+    if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
+      const restantes = estudiantes.filter(e => e.id !== id);
+      setEstudiantes(restantes);
+      localStorage.setItem('dh_estudiantes_v21', JSON.stringify(restantes));
+      try {
+        await supabase.from('estudiantes').delete().eq('id', id);
+      } catch (e) {}
+    }
+  };
+
+  // MODAL EDICIÓN ESTUDIANTE
+  const [alumnoEditando, setAlumnoEditando] = useState(null);
+  const [editDni, setEditDni] = useState('');
+  const [editNombre, setEditNombre] = useState('');
+  const [editGrado, setEditGrado] = useState('PRIMERO');
+  const [editSeccion, setEditSeccion] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
+
+  const abrirModalEditarAlumno = (alumno) => {
+    setAlumnoEditando(alumno);
+    setEditDni(alumno.dni === '1' || alumno.dni === 'S/D' ? '' : alumno.dni);
+    setEditNombre(alumno.name);
+    setEditGrado(alumno.grade);
+    setEditSeccion(alumno.section);
+    setEditTelefono(alumno.phone || '');
+  };
+
+  const guardarEdicionCompletaAlumno = async (e) => {
+    e.preventDefault();
+    if (!alumnoEditando) return;
+
+    const estudianteActualizado = {
+      ...alumnoEditando,
+      dni: editDni.trim() || 'S/D',
+      name: editNombre.trim().toUpperCase(),
+      grade: editGrado.trim().toUpperCase(),
+      section: editSeccion.trim().toUpperCase(),
+      phone: editTelefono.trim() || '999999999'
+    };
+
+    const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
+    setEstudiantes(estudiantesActualizados);
+    localStorage.setItem('dh_estudiantes_v21', JSON.stringify(estudiantesActualizados));
+
+    try {
+      await supabase.from('estudiantes').update({
+        dni: estudianteActualizado.dni,
+        name: estudianteActualizado.name,
+        grade: estudianteActualizado.grade,
+        section: estudianteActualizado.section,
+        phone: estudianteActualizado.phone
+      }).eq('id', alumnoEditando.id);
+      setMensajeAdmin('✅ Datos del estudiante actualizados.');
+      setTimeout(() => setMensajeAdmin(''), 3000);
+    } catch (err) {
+      console.warn('Actualizado en memoria local.');
+    }
+
+    setAlumnoEditando(null);
+  };
+
+  const alumnosFiltradosPadrón = useMemo(() => {
+    if (!busquedaPadrón.trim()) return estudiantes;
+    const t = busquedaPadrón.toUpperCase().trim();
+    return estudiantes.filter(e => 
+      e.name.includes(t) || 
+      (e.dni && e.dni.includes(t)) || 
+      e.grade.includes(t) || 
+      e.section.includes(t)
     );
-  }
+  }, [estudiantes, busquedaPadrón]);
 
-  // PANTALLA VIRGEN: PRIMER REGISTRO
-  if (!existeDirector) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-          <div className="bg-emerald-800 p-6 text-center text-white">
-            <div className="w-16 h-16 bg-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-emerald-700">
-              <Sparkles className="w-9 h-9 text-emerald-300" />
-            </div>
-            <h1 className="text-xl font-black tracking-tight">I.E.E. "Daniel Hernández"</h1>
-            <p className="text-xs text-emerald-200 mt-1">Configuración Inicial del Sistema</p>
-          </div>
+  // LECTOR SIAGIE Y EXCEL
+  const procesarArchivoExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-          <form onSubmit={registrarPrimerDirector} className="p-5 sm:p-6 space-y-3.5">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 font-medium leading-relaxed">
-              El sistema se encuentra en <b>estado virgen</b>. Registre la cuenta del <b>Director General</b>:
-            </div>
+    try {
+      const XLSX = await cargarLibreriaExcel();
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const primeraHoja = workbook.SheetNames[0];
+      const hoja = workbook.Sheets[primeraHoja];
+      const filas = XLSX.utils.sheet_to_json(hoja, { header: 1 });
 
-            {errorPrimerRegistro && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{errorPrimerRegistro}</span>
-              </div>
-            )}
+      if (filas.length <= 1) {
+        alert('El archivo no contiene filas de estudiantes.');
+        return;
+      }
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre Completo del Director(a)</label>
-              <input
-                type="text"
-                placeholder="Ej: Lic. Rafael Moisés Velarde Rico"
-                value={primerNombreDirector}
-                onChange={(e) => setPrimerNombreDirector(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+      let isSiagie = false;
+      let filaEncabezados = -1;
+      let colDni = -1, colApePat = -1, colApeMat = -1, colNombres = -1, colNombreUnico = -1;
+      let colGrado = -1, colSeccion = -1, colTelefono = -1;
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario para Iniciar Sesión</label>
-              <input
-                type="text"
-                placeholder="Ej: director"
-                value={primerUserDirector}
-                onChange={(e) => setPrimerUserDirector(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+      for (let r = 0; r < Math.min(filas.length, 20); r++) {
+        const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
+        row.forEach((colText, idx) => {
+          const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (clean.includes('APELLIDO PATERNO')) { colApePat = idx; isSiagie = true; filaEncabezados = r; }
+          if (clean.includes('APELLIDO MATERNO')) { colApeMat = idx; }
+          if (clean === 'NOMBRES' || clean.includes('NOMBRE(S)')) { colNombres = idx; }
+          if (clean.includes('NUMERO DE DOCUMENTO') || clean.includes('NRO DOCUMENTO') || clean.includes('N° DOCUMENTO')) { colDni = idx; }
+          else if (colDni === -1 && (clean === 'DNI' || clean.includes('DOCUMENTO'))) { colDni = idx; }
+          if (clean.includes('GRADO') || clean.includes('ANO')) { colGrado = idx; }
+          if (clean.includes('SECCION') || clean.includes('AULA')) { colSeccion = idx; }
+          if (clean.includes('TEL') || clean.includes('CEL') || clean.includes('APODERADO')) { colTelefono = idx; }
+          if (!isSiagie && (clean.includes('APELLIDOS Y NOMBRES') || clean.includes('ESTUDIANTE') || clean.includes('ALUMNO'))) {
+            colNombreUnico = idx;
+            filaEncabezados = r;
+          }
+        });
+        if (isSiagie && colApePat !== -1 && colNombres !== -1) break;
+      }
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={primerClaveDirector}
-                  onChange={(e) => setPrimerClaveDirector(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Repetir Contraseña</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={primerClaveConfirm}
-                  onChange={(e) => setPrimerClaveConfirm(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
+      if (isSiagie && (colGrado === -1 || colSeccion === -1)) {
+        for (let r = 0; r < filaEncabezados; r++) {
+          const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
+          row.forEach((colText, idx) => {
+            const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (clean.includes('GRADO') && colGrado === -1) colGrado = idx;
+            if (clean.includes('SECCION') && colSeccion === -1) colSeccion = idx;
+          });
+        }
+      }
 
-            <button
-              type="submit"
-              disabled={guardandoDirector}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3.5 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 transition mt-2"
-            >
-              {guardandoDirector ? <Loader2 className="w-5 h-5 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-              <span>{guardandoDirector ? 'Guardando...' : 'Activar Sistema y Crear Director'}</span>
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
+      const mapaSeccionesSIAGIE = {
+        'RESPONSABILIDD': 'RESPONSABILIDAD',
+        'DANIEL ALCIDES CARRION': 'D. A. CARRIÓN',
+        'JOSE DE SAN MARTIN': 'SAN MARTÍN',
+        'JOSE OLAYA': 'JOSÉ OLAYA',
+        'FRANCISCO BOLOGNESI': 'F. BOLOGNESI',
+        'ANDRES AVELINO CACERES': 'A. A. CÁCERES',
+        'ABRAHAM VALDELOMAR': 'A. VALDELOMAR',
+        'CIRO ALEGRIA': 'C. ALEGRÍA',
+        'JOSE CARLOS MAREATEGUI': 'J. C. MARIÁTEGUI',
+        'CESAR VALLEJO': 'C. VALLEJO',
+        'RICARDO PALMA': 'R. PALMA',
+        'MARIO VARGAS LLOSA': 'M. V. LLOSA',
+        'NIKOLA TESLA': 'N. TESLA',
+        'RENE DESCARTES': 'R. DESCARTES',
+        'PIERRE DE FERMAT': 'P. FERMAT',
+        'ISAAC NEWTON': 'I. NEWTON',
+        'THOMAS ALVA EDISON': 'T. ALVA',
+        'JHON CARL FRIEDRICH GAUSS': 'F. GAUSS',
+        'SOCRATES': 'SÓCRATES',
+        'TALES DE MILETO': 'T. MILETO',
+        'PLATON': 'PLATÓN',
+        'ARISTOTELES': 'ARISTÓTELES',
+        'PITAGORAS': 'PITÁGORAS',
+        'IMMANUEL KANT': 'I. KANT'
+      };
 
-  // PANTALLA LOGIN
-  if (!usuarioAutenticado) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-          <div className="bg-emerald-700 p-5 sm:p-6 text-center text-white">
-            <div className="w-14 h-14 bg-emerald-800 rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
-              <School className="w-8 h-8 text-emerald-200" />
-            </div>
-            <h1 className="text-xl font-black tracking-tight">I.E.E. "Daniel Hernández"</h1>
-            <p className="text-xs text-emerald-200 mt-0.5">Control de Asistencia Escolar 2026</p>
-          </div>
+      const inicio = filaEncabezados !== -1 ? filaEncabezados + 1 : 1;
+      const cargados = [];
 
-          <form onSubmit={handleLogin} className="p-4 sm:p-6 space-y-4">
-            {!estaEnLinea && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-2.5 rounded-xl flex items-center gap-2">
-                <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Modo Sin Señal: Ingreso habilitado en este teléfono.</span>
-              </div>
-            )}
+      for (let i = inicio; i < filas.length; i++) {
+        const fila = filas[i];
+        if (!fila || fila.length === 0) continue;
 
-            {errorLogin && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-lg flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{errorLogin}</span>
-              </div>
-            )}
+        let nombreCompleto = '';
+        if (isSiagie && colApePat !== -1 && colNombres !== -1) {
+          const pat = String(fila[colApePat] || '').trim().toUpperCase();
+          const mat = colApeMat !== -1 ? String(fila[colApeMat] || '').trim().toUpperCase() : '';
+          const nom = String(fila[colNombres] || '').trim().toUpperCase();
+          nombreCompleto = `${pat} ${mat} ${nom}`.trim();
+        } else if (colNombreUnico !== -1) {
+          nombreCompleto = String(fila[colNombreUnico] || '').trim().toUpperCase();
+        }
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario</label>
-              <input 
-                type="text" 
-                placeholder="Ingrese su usuario asignado"
-                value={inputUsuario}
-                onChange={(e) => setInputUsuario(e.target.value)}
-                required
-                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+        if (!nombreCompleto) continue;
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-600 uppercase">Contraseña</label>
-                <button
-                  type="button"
-                  onClick={() => setModalRecuperar(true)}
-                  className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold hover:underline"
-                >
-                  ¿Olvidaste tu clave?
-                </button>
-              </div>
-              <div className="relative">
-                <input 
-                  type={mostrarClave ? "text" : "password"} 
-                  placeholder="••••••••"
-                  value={inputClave}
-                  onChange={(e) => setInputClave(e.target.value)}
-                  required
-                  className="w-full pl-3.5 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarClave(!mostrarClave)}
-                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
-                >
-                  {mostrarClave ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5 text-slate-500" />}
-                </button>
-              </div>
-            </div>
+        let dniExtraido = colDni !== -1 ? String(fila[colDni] || '').replace(/\D/g, '').trim() : '';
+        if (dniExtraido.length < 5) dniExtraido = 'S/D';
 
-            <div className="flex items-center gap-2 pt-0.5">
-              <input
-                type="checkbox"
-                id="recordar"
-                checked={recordarSesion}
-                onChange={(e) => setRecordarSesion(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-              />
-              <label htmlFor="recordar" className="text-xs font-semibold text-slate-600 cursor-pointer select-none">
-                Mantener sesión abierta en este celular
-              </label>
-            </div>
+        let gradoVal = colGrado !== -1 ? String(fila[colGrado] || 'PRIMERO').trim().toUpperCase() : 'PRIMERO';
+        let seccionRaw = colSeccion !== -1 ? String(fila[colSeccion] || 'RESPONSABILIDAD').trim().toUpperCase() : 'RESPONSABILIDAD';
+        let seccionVal = mapaSeccionesSIAGIE[seccionRaw] || seccionRaw;
 
-            <button 
-              type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3.5 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all mt-2"
-            >
-              <Lock className="w-4 h-4" /> Iniciar Sesión
-            </button>
-          </form>
-        </div>
+        cargados.push({
+          id: `est_${dniExtraido !== 'S/D' ? dniExtraido : Date.now() + i}`,
+          dni: dniExtraido,
+          name: nombreCompleto,
+          grade: gradoVal,
+          section: seccionVal,
+          phone: colTelefono !== -1 ? String(fila[colTelefono] || '999999999').trim() : '999999999'
+        });
+      }
 
-        {modalRecuperar && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-emerald-700 font-bold">
-                  <HelpCircle className="w-5 h-5" />
-                  <h3>Recuperar Contraseña</h3>
-                </div>
-                <button onClick={() => setModalRecuperar(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      if (cargados.length > 0) {
+        setEstudiantes(cargados);
+        localStorage.setItem('dh_estudiantes_v21', JSON.stringify(cargados));
 
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Comuníquese directamente con la Dirección del Colegio para solicitar la restauración de sus credenciales.
-              </p>
-
-              <div className="space-y-2">
-                <a
-                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema.')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow"
-                >
-                  <MessageCircle className="w-4 h-4" /> Contactar a Dirección por WhatsApp
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setModalRecuperar(false)}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 rounded-xl transition"
-                >
-                  Regresar al login
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+        try {
+          await supabase.from('estudiantes').delete().neq('id', 'cero');
+          const { error } = await supabase.from('estudiantes').insert(cargados);
+          if (error) alert('Aviso Supabase: ' + error.message);
+          else alert(`¡Éxito! Se cargaron ${cargados.length} estudiantes del SIAGIE.`);
+        } catch (err) {
+          console.warn('Estudiantes guardados en memoria del celular.');
+        }
+      } else {
+        alert('No se detectaron estudiantes válidos. Verifique el archivo.');
+      }
+    } catch (err) {
+      alert('Error al procesar el archivo Excel: ' + err.message);
+    }
+    e.target.value = '';
+  };
 
   // =========================================================================
-  // APLICACIÓN PRINCIPAL CON NAVEGACIÓN SENCILLA Y DIRECTA
+  // VISTAS
   // =========================================================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
       
-      {/* BARRA SUPERIOR PARA COLA SIN SUBIR */}
+      {/* COLA OFFLINE */}
       {colaPendientes.length > 0 && (
         <div className="bg-amber-600 text-white px-3 py-2 text-xs font-black flex items-center justify-between shadow sticky top-0 z-50 animate-pulse">
           <div className="flex items-center gap-1.5 truncate">
             <Smartphone className="w-4 h-4 text-amber-200 shrink-0" />
-            <span className="truncate">Tienes {colaPendientes.length} asistencia(s) guardadas en el teléfono</span>
+            <span className="truncate">Tienes {colaPendientes.length} asistencia(s) en este teléfono</span>
           </div>
           <button
             onClick={sincronizarColaConSupabase}
@@ -1135,7 +1220,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ENCABEZADO INSTITUCIONAL */}
+      {/* ENCABEZADO */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2">
@@ -1179,9 +1264,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* =========================================================================
-            BARRA DE NAVEGACIÓN SIMPLIFICADA PARA EL DIRECTOR (SOLO 3 BOTONES CLAROS)
-           ========================================================================= */}
+        {/* MENÚ DIRECTOR (3 BOTONES DIRECTOS) */}
         {esDirector && (
           <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/60 bg-emerald-800/40">
             <button 
@@ -1190,7 +1273,7 @@ export default function App() {
                 vistaDirector === 'asistencia' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
             >
-              <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600" /> 
+              <ClipboardCheck className="w-4 h-4 text-emerald-600 shrink-0" /> 
               <span>Control de Asistencia</span>
             </button>
 
@@ -1200,7 +1283,7 @@ export default function App() {
                 vistaDirector === 'reportes' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
             >
-              <FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-400" /> 
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" /> 
               <span>Descargar Excel</span>
             </button>
 
@@ -1210,13 +1293,13 @@ export default function App() {
                 vistaDirector === 'gestion' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
             >
-              <Settings className="w-4 h-4 shrink-0 text-emerald-300" /> 
+              <Settings className="w-4 h-4 text-emerald-300 shrink-0" /> 
               <span>Personal y Padrón</span>
             </button>
           </div>
         )}
 
-        {/* NAVEGACIÓN PARA AUXILIARES */}
+        {/* MENÚ AUXILIAR */}
         {esAuxiliar && (
           <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/60 bg-emerald-800/40">
             <button 
@@ -1225,7 +1308,7 @@ export default function App() {
                 subVistaAuxiliar === 'salones' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500' : 'text-emerald-100'
               }`}
             >
-              <Users className="w-4 h-4" /> Mis Salones Asignados
+              <Users className="w-4 h-4" /> Mis Salones
             </button>
             <button 
               onClick={() => setSubVistaAuxiliar('puerta')}
@@ -1242,18 +1325,18 @@ export default function App() {
       <main className="max-w-2xl mx-auto w-full px-3.5 pt-3.5 flex-1 space-y-3.5">
         
         {/* =========================================================================
-            VISTA 1: CONTROL DE ASISTENCIA (DIRECTOR Y DOCENTES)
+            VISTA 1: CONTROL DE ASISTENCIA Y RONDAS
            ========================================================================= */}
         {((esDirector && vistaDirector === 'asistencia') || esDocente || (esAuxiliar && subVistaAuxiliar === 'salones')) && (
           <div className="space-y-3.5">
             
-            {/* BUSCADOR UNIVERSAL DIRECTO PARA EL DIRECTOR */}
+            {/* BUSCADOR UNIVERSAL DIRECTO DEL DIRECTOR */}
             {esDirector && (
               <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-300">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1.5">
                     <Search className="w-4 h-4 text-emerald-600" />
-                    Buscar Estudiante para Control Directo
+                    Buscador de Alumno para Marcar Estado
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">Total: {estudiantes.length} alumnos</span>
                 </div>
@@ -1277,10 +1360,8 @@ export default function App() {
                   )}
                 </div>
 
-                {/* RESULTADOS INMEDIATOS DEL BUSCADOR DEL DIRECTOR */}
                 {estudiantesFiltradosBuscador.length > 0 && (
                   <div className="mt-2.5 space-y-2 border-t border-slate-100 pt-2 max-h-72 overflow-y-auto">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Seleccione el estado para marcar:</p>
                     {estudiantesFiltradosBuscador.map(alumno => {
                       const st = asistencias[fechaHoy]?.[alumno.id]?.status || 'P';
                       return (
@@ -1292,7 +1373,6 @@ export default function App() {
                             </p>
                           </div>
 
-                          {/* BOTONES DIRECTOS PARA CAMBIAR ESTADO */}
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
@@ -1353,7 +1433,7 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTADORES EN TIEMPO REAL (PRESENTES, TARDANZAS, FALTAS, EVASIÓN, PERMISOS) */}
+            {/* CONTADORES GENERALES */}
             <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
               <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-sm text-center">
                 <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Presentes</p>
@@ -1381,7 +1461,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* ALERTA CRÍTICA DE EVASIONES */}
+            {/* ALERTAS DE EVASIÓN */}
             {metricasDirector.evadieronHoyLista.length > 0 && (
               <div className="bg-purple-900 text-white p-3.5 rounded-2xl shadow-lg border border-purple-700 animate-fadeIn">
                 <div className="flex items-center justify-between mb-2">
@@ -1422,7 +1502,7 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTROL POR AULAS */}
+            {/* SELECTOR DE AULA */}
             <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-200">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-bold text-emerald-800 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
@@ -1449,11 +1529,11 @@ export default function App() {
               </select>
             </div>
 
-            {/* LISTA DE ESTUDIANTES DEL SALÓN SELECCIONADO */}
+            {/* LISTA DEL SALÓN */}
             <div className="space-y-2">
               {alumnosAula.length === 0 ? (
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">
-                  No hay alumnos matriculados en {gradoSel} - {seccionSel}.
+                  No hay alumnos en el padrón para {gradoSel} - {seccionSel}.
                 </div>
               ) : (
                 alumnosAula.map((alumno, index) => {
@@ -1540,7 +1620,7 @@ export default function App() {
           </div>
         )}
 
-        {/* CONTROL DE PUERTA PARA AUXILIARES */}
+        {/* PUERTA AUXILIARES */}
         {esAuxiliar && subVistaAuxiliar === 'puerta' && (
           <div className="space-y-3.5">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -1587,7 +1667,7 @@ export default function App() {
         )}
 
         {/* =========================================================================
-            VISTA 2: DESCARGAR REPORTES EN EXCEL (DIRECTO PARA EL DIRECTOR)
+            VISTA 2: DESCARGAS EXCEL
            ========================================================================= */}
         {esDirector && vistaDirector === 'reportes' && (
           <div className="space-y-3.5">
@@ -1718,74 +1798,362 @@ export default function App() {
         )}
 
         {/* =========================================================================
-            VISTA 3: PERSONAL Y PADRÓN (ADMINISTRACIÓN SIMPLIFICADA)
+            VISTA 3: PERSONAL Y PADRÓN (TODO RESTITUIDO Y ORGANIZADO)
            ========================================================================= */}
         {esDirector && vistaDirector === 'gestion' && (
           <div className="space-y-3.5">
+            
+            {/* SUB-PESTAÑAS CLARAS PARA EL DIRECTOR */}
+            <div className="flex bg-slate-200 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setSubPestanaGestion('personal')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${
+                  subPestanaGestion === 'personal' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                👥 Personal Docente y Auxiliares ({usuarios.filter(u => u.rol !== 'director').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubPestanaGestion('estudiantes')}
+                className={`flex-1 py-2 text-xs font-black rounded-lg transition ${
+                  subPestanaGestion === 'estudiantes' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🎓 Padrón de Estudiantes ({estudiantes.length})
+              </button>
+            </div>
+
             {mensajeAdmin && (
               <div className="p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center animate-pulse">
                 {mensajeAdmin}
               </div>
             )}
 
-            {/* LISTA Y EDICIÓN DE PERSONAL (DOCENTES Y AUXILIARES) */}
-            <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-2.5">
-                <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                  <UserCog className="w-4 h-4 text-emerald-600" />
-                  Personal Registrado ({usuarios.filter(u => u.rol !== 'director').length})
-                </h3>
-              </div>
+            {/* SECCIÓN A: GESTIÓN DE PERSONAL (CREAR NUEVO + LISTA CON EDITAR/ELIMINAR) */}
+            {subPestanaGestion === 'personal' && (
+              <div className="space-y-3.5">
+                
+                {/* FORMULARIO PARA REGISTRAR DOCENTE O AUXILIAR NUEVO */}
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-2.5 text-xs">
+                    <UserPlus className="w-4 h-4" />
+                    <h3>Registrar Nuevo Docente o Auxiliar de Educación</h3>
+                  </div>
 
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {usuarios.filter(u => u.rol !== 'director').map(usr => (
-                  <div key={usr.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{usr.nombre}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                        Cargo: <b className="uppercase text-emerald-800">{usr.rol}</b> • Usuario: <b>{usr.usuario}</b> • Clave: <code>{usr.clave}</code>
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {usr.aulasAsignadas && usr.aulasAsignadas.length > 0 ? (
-                          usr.aulasAsignadas.map((a, i) => (
-                            <span key={i} className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">
-                              {a.grade} - {a.section}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-[9px] text-slate-400">Sin salones asignados</span>
-                        )}
+                  <form onSubmit={registrarPersonal} className="space-y-2.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Cargo a desempeñar</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNuevoRolPersonal('auxiliar')}
+                          className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                            nuevoRolPersonal === 'auxiliar' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <Clock className="w-3.5 h-3.5" /> Auxiliar de Educación
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNuevoRolPersonal('docente')}
+                          className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                            nuevoRolPersonal === 'docente' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5" /> Docente de Aula
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder={nuevoRolPersonal === 'auxiliar' ? "Nombre del Auxiliar (ej: Ronald Alarcón)" : "Nombre del Docente y Área (ej: Ana Yance - COM)"}
+                      value={nuevoNombreDocente}
+                      onChange={(e) => setNuevoNombreDocente(e.target.value)}
+                      required
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Usuario de acceso"
+                        value={nuevoUserDocente}
+                        onChange={(e) => setNuevoUserDocente(e.target.value)}
+                        required
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Contraseña (DNI)"
+                        value={nuevaClaveDocente}
+                        onChange={(e) => setNuevaClaveDocente(e.target.value)}
+                        required
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[10px] font-bold text-slate-700 uppercase">
+                          {nuevoRolPersonal === 'auxiliar' ? 'Secciones asignadas al auxiliar:' : 'Aulas a cargo del docente:'}
+                        </label>
+                        <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                          {aulasSeleccionadasNuevas.length} seleccionadas
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'].map(g => (
+                          <button
+                            type="button"
+                            key={g}
+                            onClick={() => alternarGradoCompleto(g)}
+                            className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold py-1 px-2 rounded-lg transition"
+                          >
+                            + Todo {g.slice(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                        {todasLasAulasColegio.map(aula => {
+                          const clave = `${aula.grade}|${aula.section}`;
+                          const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
+                          return (
+                            <button
+                              type="button"
+                              key={clave}
+                              onClick={() => alternarSeleccionAula(clave)}
+                              className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between transition-all ${
+                                estaMarcada 
+                                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' 
+                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span className="truncate">{aula.grade} - {aula.section}</span>
+                              {estaMarcada ? (
+                                <CheckSquare className="w-4 h-4 shrink-0 text-white" />
+                              ) : (
+                                <Square className="w-4 h-4 shrink-0 text-slate-400" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <button
-                      onClick={() => abrirModalEditarPersonal(usr)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm shrink-0"
+                      type="submit"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
                     >
-                      <Edit3 className="w-3.5 h-3.5" /> Editar
+                      <UserPlus className="w-4 h-4" /> Registrar Personal en el Sistema
                     </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </form>
+                </div>
 
-            {/* PADRÓN DE ESTUDIANTES */}
-            <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                  <School className="w-4 h-4 text-emerald-600" />
-                  Padrón Institucional ({estudiantes.length} Alumnos)
-                </h3>
+                {/* LISTA DE PERSONAL ACTUAL */}
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-xs font-black text-slate-700 uppercase mb-2.5">
+                    Personal Registrado ({usuarios.filter(u => u.rol !== 'director').length})
+                  </h3>
+
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {usuarios.filter(u => u.rol !== 'director').map(usr => (
+                      <div key={usr.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{usr.nombre}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                            Cargo: <b className="uppercase text-emerald-800">{usr.rol}</b> • Usuario: <b>{usr.usuario}</b> • Clave: <code>{usr.clave}</code>
+                          </p>
+                          
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {usr.aulasAsignadas && usr.aulasAsignadas.length > 0 ? (
+                              usr.aulasAsignadas.map((a, i) => (
+                                <span key={i} className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  {a.grade} - {a.section}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[9px] text-slate-400">Sin salones asignados</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => abrirModalEditarPersonal(usr)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
+                            title="Editar usuario, clave o aulas"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" /> Editar
+                          </button>
+                          <button
+                            onClick={() => eliminarDocente(usr.id)}
+                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-xl transition"
+                            title="Eliminar acceso"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Los 498 estudiantes del SIAGIE están activos en el sistema y disponibles para el control de asistencia diario.
-              </p>
-            </div>
+            )}
+
+            {/* SECCIÓN B: GESTIÓN DE ESTUDIANTES (MATRICULAR, SUBIR EXCEL, BUSCADOR) */}
+            {subPestanaGestion === 'estudiantes' && (
+              <div className="space-y-3.5">
+                
+                {/* CARGA MASIVA DE EXCEL / SIAGIE */}
+                <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-xs">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                      <span>Carga Masiva Excel / SIAGIE (.xlsx)</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Formato Oficial MINEDU</span>
+                  </div>
+                  
+                  <label className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow cursor-pointer transition">
+                    <Upload className="w-4 h-4" /> Subir Padrón en Excel (.xlsx)
+                    <input 
+                      type="file" 
+                      accept=".xlsx, .xls, .csv" 
+                      onChange={procesarArchivoExcel}
+                      className="hidden" 
+                    />
+                  </label>
+                </div>
+
+                {/* MATRICULAR ALUMNO INDIVIDUAL */}
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs uppercase mb-2.5">
+                    <UserPlus className="w-4 h-4 text-emerald-600" />
+                    <span>Matricular Alumno Nuevo Individual</span>
+                  </div>
+
+                  <form onSubmit={registrarAlumnoNuevo} className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="DNI (8 dígitos)"
+                        maxLength={8}
+                        value={nuevoDniAlumno}
+                        onChange={(e) => setNuevoDniAlumno(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+                      <input
+                        type="text"
+                        placeholder="APELLIDOS Y NOMBRES"
+                        value={nuevoNombreAlumno}
+                        onChange={(e) => setNuevoNombreAlumno(e.target.value)}
+                        required
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <select
+                        value={nuevoGradoAlumno}
+                        onChange={(e) => setNuevoGradoAlumno(e.target.value)}
+                        className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                      >
+                        <option value="PRIMERO">1°</option>
+                        <option value="SEGUNDO">2°</option>
+                        <option value="TERCERO">3°</option>
+                        <option value="CUARTO">4°</option>
+                        <option value="QUINTO">5°</option>
+                      </select>
+
+                      <input
+                        type="text"
+                        placeholder="Sección (ej: HONRADEZ)"
+                        value={nuevaSeccionAlumno}
+                        onChange={(e) => setNuevaSeccionAlumno(e.target.value)}
+                        className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+
+                      <input
+                        type="tel"
+                        placeholder="Celular"
+                        value={nuevoCelularAlumno}
+                        onChange={(e) => setNuevoCelularAlumno(e.target.value)}
+                        className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                    >
+                      <Plus className="w-4 h-4" /> Agregar Alumno al Padrón
+                    </button>
+                  </form>
+                </div>
+
+                {/* BUSCADOR Y LISTA DEL PADRÓN */}
+                <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase">
+                      Padrón ({alumnosFiltradosPadrón.length} de {estudiantes.length} alumnos)
+                    </h3>
+                  </div>
+
+                  <div className="relative mb-2.5">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por DNI, Nombre o Aula..."
+                      value={busquedaPadrón}
+                      onChange={(e) => setBusquedaPadrón(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {alumnosFiltradosPadrón.map(alumno => (
+                      <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                            DNI: <b>{alumno.dni || 'S/D'}</b> • <span className="text-emerald-700 font-bold">{alumno.grade} - {alumno.section}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => abrirModalEditarAlumno(alumno)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
+                            title="Editar datos"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" /> Editar
+                          </button>
+                          
+                          <button
+                            onClick={() => retirarAlumno(alumno.id, alumno.name)}
+                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-xl transition"
+                            title="Dar de baja"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
           </div>
         )}
 
-        {/* MODAL DE EDICIÓN PARA EL DIRECTOR */}
+        {/* MODAL EDITAR PERSONAL */}
         {personalEditando && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
             <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[90vh] overflow-y-auto">
@@ -1909,6 +2277,115 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setPersonalEditando(null)}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Save className="w-4 h-4" /> Guardar Cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL EDITAR ESTUDIANTE */}
+        {alumnoEditando && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+              <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
+                  <Edit3 className="w-4 h-4" />
+                  <h4>Editar Datos del Estudiante</h4>
+                </div>
+                <button onClick={() => setAlumnoEditando(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={guardarEdicionCompletaAlumno} className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                    Documento de Identidad (DNI):
+                  </label>
+                  <input
+                    type="text"
+                    value={editDni}
+                    onChange={(e) => setEditDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="Ingrese los 8 dígitos"
+                    maxLength={8}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                    Apellidos y Nombres:
+                  </label>
+                  <input
+                    type="text"
+                    value={editNombre}
+                    onChange={(e) => setEditNombre(e.target.value)}
+                    required
+                    placeholder="APELLIDOS Y NOMBRES"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                      Grado:
+                    </label>
+                    <select
+                      value={editGrado}
+                      onChange={(e) => setEditGrado(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                    >
+                      <option value="PRIMERO">PRIMERO</option>
+                      <option value="SEGUNDO">SEGUNDO</option>
+                      <option value="TERCERO">TERCERO</option>
+                      <option value="CUARTO">CUARTO</option>
+                      <option value="QUINTO">QUINTO</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                      Sección:
+                    </label>
+                    <input
+                      type="text"
+                      value={editSeccion}
+                      onChange={(e) => setEditSeccion(e.target.value.toUpperCase())}
+                      required
+                      placeholder="Ej: RESPONSABILIDAD"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                    Celular del Apoderado:
+                  </label>
+                  <input
+                    type="tel"
+                    value={editTelefono}
+                    onChange={(e) => setEditTelefono(e.target.value)}
+                    placeholder="Ej: 964123456"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlumnoEditando(null)}
                     className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
                   >
                     Cancelar
