@@ -9,6 +9,7 @@ import {
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
   Loader2, FileText, Settings
 } from 'lucide-react';
+
 // Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
 const AULAS_OFICIALES_DH = [
   // 1ro de Secundaria[cite: 2]
@@ -73,7 +74,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v23');
+      const local = localStorage.getItem('dh_cola_offline_v24');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -86,7 +87,7 @@ export default function App() {
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]');
     } catch {
       colaActual = [];
     }
@@ -127,7 +128,7 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v23', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v24', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
@@ -155,7 +156,7 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v23');
+      const local = localStorage.getItem('dh_usuarios_v24');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -165,7 +166,7 @@ export default function App() {
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v23');
+      const local = localStorage.getItem('dh_estudiantes_v24');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -175,7 +176,7 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v23');
+      const local = localStorage.getItem('dh_asistencias_v24');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
@@ -200,13 +201,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v23', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v24', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v23', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v24', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -220,7 +221,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v23', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v24', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -267,8 +268,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v23', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v23', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v24', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v24', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -292,7 +293,7 @@ export default function App() {
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v23');
+      const sesion = localStorage.getItem('dh_sesion_v24');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -322,7 +323,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v23', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v24', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -334,7 +335,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v23');
+      localStorage.removeItem('dh_sesion_v24');
     }
   };
 
@@ -399,7 +400,7 @@ export default function App() {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v23', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v24', JSON.stringify(res));
       return res;
     });
 
@@ -427,10 +428,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -441,10 +442,10 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
     });
   };
 
@@ -468,7 +469,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v23', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v24', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -489,10 +490,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -516,10 +517,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -823,7 +824,7 @@ export default function App() {
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v23', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v24', JSON.stringify(nuevosUsuarios));
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -853,7 +854,7 @@ export default function App() {
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v23', JSON.stringify(restantes));
+      localStorage.setItem('dh_usuarios_v24', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -914,7 +915,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v23', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v24', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -958,7 +959,7 @@ export default function App() {
 
     const listaActualizada = [...estudiantes, nuevo];
     setEstudiantes(listaActualizada);
-    localStorage.setItem('dh_estudiantes_v23', JSON.stringify(listaActualizada));
+    localStorage.setItem('dh_estudiantes_v24', JSON.stringify(listaActualizada));
 
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
@@ -977,7 +978,7 @@ export default function App() {
     if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
       const restantes = estudiantes.filter(e => e.id !== id);
       setEstudiantes(restantes);
-      localStorage.setItem('dh_estudiantes_v23', JSON.stringify(restantes));
+      localStorage.setItem('dh_estudiantes_v24', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1016,7 +1017,7 @@ export default function App() {
 
     const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
     setEstudiantes(estudiantesActualizados);
-    localStorage.setItem('dh_estudiantes_v23', JSON.stringify(estudiantesActualizados));
+    localStorage.setItem('dh_estudiantes_v24', JSON.stringify(estudiantesActualizados));
 
     try {
       await supabase.from('estudiantes').update({
@@ -1165,7 +1166,7 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        localStorage.setItem('dh_estudiantes_v23', JSON.stringify(cargados));
+        localStorage.setItem('dh_estudiantes_v24', JSON.stringify(cargados));
 
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
@@ -1185,7 +1186,7 @@ export default function App() {
   };
 
   // =========================================================================
-  // VISTAS
+  // RENDER PRINCIPAL
   // =========================================================================
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
