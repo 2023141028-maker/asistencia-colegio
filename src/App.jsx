@@ -10,37 +10,37 @@ import {
   Loader2, FileText, Settings
 } from 'lucide-react';
 
-// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
+// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
 const AULAS_OFICIALES_DH = [
-  // 1ro de Secundaria
+  // 1ro de Secundaria[cite: 2]
   { grade: 'PRIMERO', section: 'RESPONSABILIDAD' },
   { grade: 'PRIMERO', section: 'HONRADEZ' },
   { grade: 'PRIMERO', section: 'RESPETO' },
   { grade: 'PRIMERO', section: 'SOLIDARIDAD' },
   { grade: 'PRIMERO', section: 'PERSEVERANCIA' },
   { grade: 'PRIMERO', section: 'LABORIOSIDAD' },
-  // 2do de Secundaria
+  // 2do de Secundaria[cite: 2]
   { grade: 'SEGUNDO', section: 'D. A. CARRIÓN' },
   { grade: 'SEGUNDO', section: 'SAN MARTÍN' },
   { grade: 'SEGUNDO', section: 'MIGUEL GRAU' },
   { grade: 'SEGUNDO', section: 'JOSÉ OLAYA' },
   { grade: 'SEGUNDO', section: 'F. BOLOGNESI' },
   { grade: 'SEGUNDO', section: 'A. A. CÁCERES' },
-  // 3ro de Secundaria
+  // 3ro de Secundaria[cite: 2]
   { grade: 'TERCERO', section: 'A. VALDELOMAR' },
   { grade: 'TERCERO', section: 'C. ALEGRÍA' },
   { grade: 'TERCERO', section: 'J. C. MARIÁTEGUI' },
   { grade: 'TERCERO', section: 'C. VALLEJO' },
   { grade: 'TERCERO', section: 'R. PALMA' },
   { grade: 'TERCERO', section: 'M. V. LLOSA' },
-  // 4to de Secundaria
+  // 4to de Secundaria[cite: 2]
   { grade: 'CUARTO', section: 'N. TESLA' },
   { grade: 'CUARTO', section: 'R. DESCARTES' },
   { grade: 'CUARTO', section: 'P. FERMAT' },
   { grade: 'CUARTO', section: 'I. NEWTON' },
   { grade: 'CUARTO', section: 'T. ALVA' },
   { grade: 'CUARTO', section: 'F. GAUSS' },
-  // 5to de Secundaria
+  // 5to de Secundaria[cite: 2]
   { grade: 'QUINTO', section: 'SÓCRATES' },
   { grade: 'QUINTO', section: 'T. MILETO' },
   { grade: 'QUINTO', section: 'PLATÓN' },
@@ -74,7 +74,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v22');
+      const local = localStorage.getItem('dh_cola_offline_v23');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -87,7 +87,7 @@ export default function App() {
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]');
     } catch {
       colaActual = [];
     }
@@ -128,7 +128,7 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v22', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v23', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
@@ -156,7 +156,7 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v22');
+      const local = localStorage.getItem('dh_usuarios_v23');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -166,7 +166,7 @@ export default function App() {
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v22');
+      const local = localStorage.getItem('dh_estudiantes_v23');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -176,14 +176,14 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v22');
+      const local = localStorage.getItem('dh_asistencias_v23');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
     }
   });
 
-  // CARGA INICIAL
+  // CARGA INICIAL DESDE SUPABASE
   useEffect(() => {
     let montado = true;
 
@@ -201,13 +201,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v22', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v23', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v22', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v23', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -221,7 +221,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v22', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v23', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -268,8 +268,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v22', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v22', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v23', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v23', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -293,7 +293,7 @@ export default function App() {
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v22');
+      const sesion = localStorage.getItem('dh_sesion_v23');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -310,9 +310,9 @@ export default function App() {
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
 
   // NAVEGACIÓN PRINCIPAL
-  const [vistaDirector, setVistaDirector] = useState('asistencia'); // 'asistencia', 'reportes', 'gestion'
-  const [subPestanaGestion, setSubPestanaGestion] = useState('personal'); // 'personal', 'estudiantes'
-  const [subVistaAuxiliar, setSubVistaAuxiliar] = useState('salones'); // 'salones', 'puerta'
+  const [vistaDirector, setVistaDirector] = useState('asistencia');
+  const [subPestanaGestion, setSubPestanaGestion] = useState('personal');
+  const [subVistaAuxiliar, setSubVistaAuxiliar] = useState('salones');
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -323,7 +323,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v22', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v23', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -335,7 +335,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v22');
+      localStorage.removeItem('dh_sesion_v23');
     }
   };
 
@@ -393,7 +393,6 @@ export default function App() {
     setAsistenciaAula(inicial);
   }, [alumnosAula, fechaHoy, asistencias]);
 
-  // CAMBIO DIRECTO DE ESTADO
   const cambiarEstadoAlumno = (alumnoId, nuevoEstado) => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -401,7 +400,7 @@ export default function App() {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v22', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v23', JSON.stringify(res));
       return res;
     });
 
@@ -429,10 +428,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -443,10 +442,10 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
     });
   };
 
@@ -470,7 +469,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v22', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v23', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -491,10 +490,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -518,10 +517,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v23') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v23', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -770,9 +769,7 @@ export default function App() {
     window.open(url, '_blank');
   };
 
-  // =========================================================================
-  // GESTIÓN DE PERSONAL (CREAR, EDITAR Y ELIMINAR)
-  // =========================================================================
+  // GESTIÓN DE PERSONAL
   const [nuevoRolPersonal, setNuevoRolPersonal] = useState('docente');
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
@@ -827,7 +824,7 @@ export default function App() {
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v22', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v23', JSON.stringify(nuevosUsuarios));
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -857,7 +854,7 @@ export default function App() {
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v22', JSON.stringify(restantes));
+      localStorage.setItem('dh_usuarios_v23', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -918,7 +915,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v22', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v23', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -939,9 +936,7 @@ export default function App() {
     setPersonalEditando(null);
   };
 
-  // =========================================================================
-  // GESTIÓN DE ESTUDIANTES (MATRICULAR, SUBIR EXCEL, EDITAR Y RETIRAR)
-  // =========================================================================
+  // GESTIÓN DE ESTUDIANTES
   const [nuevoDniAlumno, setNuevoDniAlumno] = useState('');
   const [nuevoNombreAlumno, setNuevoNombreAlumno] = useState('');
   const [nuevoGradoAlumno, setNuevoGradoAlumno] = useState('PRIMERO');
@@ -964,7 +959,7 @@ export default function App() {
 
     const listaActualizada = [...estudiantes, nuevo];
     setEstudiantes(listaActualizada);
-    localStorage.setItem('dh_estudiantes_v22', JSON.stringify(listaActualizada));
+    localStorage.setItem('dh_estudiantes_v23', JSON.stringify(listaActualizada));
 
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
@@ -983,7 +978,7 @@ export default function App() {
     if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
       const restantes = estudiantes.filter(e => e.id !== id);
       setEstudiantes(restantes);
-      localStorage.setItem('dh_estudiantes_v22', JSON.stringify(restantes));
+      localStorage.setItem('dh_estudiantes_v23', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1022,7 +1017,7 @@ export default function App() {
 
     const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
     setEstudiantes(estudiantesActualizados);
-    localStorage.setItem('dh_estudiantes_v22', JSON.stringify(estudiantesActualizados));
+    localStorage.setItem('dh_estudiantes_v23', JSON.stringify(estudiantesActualizados));
 
     try {
       await supabase.from('estudiantes').update({
@@ -1171,7 +1166,7 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        localStorage.setItem('dh_estudiantes_v22', JSON.stringify(cargados));
+        localStorage.setItem('dh_estudiantes_v23', JSON.stringify(cargados));
 
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
@@ -1799,12 +1794,12 @@ export default function App() {
         )}
 
         {/* =========================================================================
-            VISTA 3: PERSONAL Y PADRÓN (TODO RESTITUIDO Y ORGANIZADO)
+            VISTA 3: PERSONAL Y PADRÓN
            ========================================================================= */}
         {esDirector && vistaDirector === 'gestion' && (
           <div className="space-y-3.5">
             
-            {/* SUB-PESTAÑAS CLARAS PARA EL DIRECTOR */}
+            {/* SUB-PESTAÑAS */}
             <div className="flex bg-slate-200 p-1 rounded-xl">
               <button
                 type="button"
@@ -1832,11 +1827,11 @@ export default function App() {
               </div>
             )}
 
-            {/* SECCIÓN A: GESTIÓN DE PERSONAL (CREAR NUEVO + LISTA CON EDITAR/ELIMINAR) */}
+            {/* SECCIÓN A: PERSONAL */}
             {subPestanaGestion === 'personal' && (
               <div className="space-y-3.5">
                 
-                {/* FORMULARIO PARA REGISTRAR DOCENTE O AUXILIAR NUEVO */}
+                {/* REGISTRAR NUEVO DOCENTE O AUXILIAR */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-2.5 text-xs">
                     <UserPlus className="w-4 h-4" />
@@ -1955,7 +1950,7 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* LISTA DE PERSONAL ACTUAL */}
+                {/* LISTA ACTUAL DE PERSONAL */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-black text-slate-700 uppercase mb-2.5">
                     Personal Registrado ({usuarios.filter(u => u.rol !== 'director').length})
@@ -2006,7 +2001,7 @@ export default function App() {
               </div>
             )}
 
-            {/* SECCIÓN B: GESTIÓN DE ESTUDIANTES */}
+            {/* SECCIÓN B: ESTUDIANTES */}
             {subPestanaGestion === 'estudiantes' && (
               <div className="space-y-3.5">
                 
@@ -2097,7 +2092,7 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* BUSCADOR Y LISTA DEL PADRÓN */}
+                {/* LISTA DEL PADRÓN */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-bold text-slate-700 uppercase">
