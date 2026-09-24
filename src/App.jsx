@@ -4,44 +4,43 @@ import {
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
-  HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit3, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
+  HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck,
+  Upload, Edit3, Plus, Wifi, WifiOff, Smartphone,
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
-  Loader2, Footprints, FileText, UserCog, CloudUpload, ClipboardCheck,
-  Settings, UserCheck2
+  Loader2, FileText, Settings
 } from 'lucide-react';
 
-// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
+// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
 const AULAS_OFICIALES_DH = [
-  // 1ro de Secundaria[cite: 2]
+  // 1ro de Secundaria
   { grade: 'PRIMERO', section: 'RESPONSABILIDAD' },
   { grade: 'PRIMERO', section: 'HONRADEZ' },
   { grade: 'PRIMERO', section: 'RESPETO' },
   { grade: 'PRIMERO', section: 'SOLIDARIDAD' },
   { grade: 'PRIMERO', section: 'PERSEVERANCIA' },
   { grade: 'PRIMERO', section: 'LABORIOSIDAD' },
-  // 2do de Secundaria[cite: 2]
+  // 2do de Secundaria
   { grade: 'SEGUNDO', section: 'D. A. CARRIÓN' },
   { grade: 'SEGUNDO', section: 'SAN MARTÍN' },
   { grade: 'SEGUNDO', section: 'MIGUEL GRAU' },
   { grade: 'SEGUNDO', section: 'JOSÉ OLAYA' },
   { grade: 'SEGUNDO', section: 'F. BOLOGNESI' },
   { grade: 'SEGUNDO', section: 'A. A. CÁCERES' },
-  // 3ro de Secundaria[cite: 2]
+  // 3ro de Secundaria
   { grade: 'TERCERO', section: 'A. VALDELOMAR' },
   { grade: 'TERCERO', section: 'C. ALEGRÍA' },
   { grade: 'TERCERO', section: 'J. C. MARIÁTEGUI' },
   { grade: 'TERCERO', section: 'C. VALLEJO' },
   { grade: 'TERCERO', section: 'R. PALMA' },
   { grade: 'TERCERO', section: 'M. V. LLOSA' },
-  // 4to de Secundaria[cite: 2]
+  // 4to de Secundaria
   { grade: 'CUARTO', section: 'N. TESLA' },
   { grade: 'CUARTO', section: 'R. DESCARTES' },
   { grade: 'CUARTO', section: 'P. FERMAT' },
   { grade: 'CUARTO', section: 'I. NEWTON' },
   { grade: 'CUARTO', section: 'T. ALVA' },
   { grade: 'CUARTO', section: 'F. GAUSS' },
-  // 5to de Secundaria[cite: 2]
+  // 5to de Secundaria
   { grade: 'QUINTO', section: 'SÓCRATES' },
   { grade: 'QUINTO', section: 'T. MILETO' },
   { grade: 'QUINTO', section: 'PLATÓN' },
@@ -75,7 +74,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v21');
+      const local = localStorage.getItem('dh_cola_offline_v22');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -88,7 +87,7 @@ export default function App() {
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]');
     } catch {
       colaActual = [];
     }
@@ -129,7 +128,7 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v21', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v22', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
@@ -157,7 +156,7 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v21');
+      const local = localStorage.getItem('dh_usuarios_v22');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -167,7 +166,7 @@ export default function App() {
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v21');
+      const local = localStorage.getItem('dh_estudiantes_v22');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -177,14 +176,14 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v21');
+      const local = localStorage.getItem('dh_asistencias_v22');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
     }
   });
 
-  // CARGA INICIAL DESDE SUPABASE
+  // CARGA INICIAL
   useEffect(() => {
     let montado = true;
 
@@ -202,13 +201,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v21', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v22', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v21', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v22', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -222,7 +221,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v21', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v22', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -269,8 +268,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v21', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v21', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v22', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v22', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -294,7 +293,7 @@ export default function App() {
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v21');
+      const sesion = localStorage.getItem('dh_sesion_v22');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -324,7 +323,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v21', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v22', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -336,7 +335,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v21');
+      localStorage.removeItem('dh_sesion_v22');
     }
   };
 
@@ -402,7 +401,7 @@ export default function App() {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v21', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v22', JSON.stringify(res));
       return res;
     });
 
@@ -430,10 +429,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -444,10 +443,10 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
     });
   };
 
@@ -471,7 +470,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v21', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v22', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -492,10 +491,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -519,10 +518,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v21') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v22') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v21', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v22', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -764,6 +763,8 @@ export default function App() {
       mensaje = `CONSTANCIA DE PERMISO: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}). Se deja constancia de que el estudiante cuenta con permiso justificado / papeleta de salida autorizada el día de hoy ${fechaHoy}.`;
     } else if (tipoAlerta === 'falta_hoy') {
       mensaje = `Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}): Le saluda la I.E.E. Daniel Hernández. Le informamos que el día de hoy ${fechaHoy} el estudiante no se ha presentado al colegio. Por favor comunicarse para justificar su inasistencia. Gracias.`;
+    } else {
+      mensaje = `CITACIÓN FORMAL: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}). La I.E.E. Daniel Hernández le notifica que su menor hijo(a) registra a la fecha incidencias disciplinarias acumuladas en el mes. Solicitamos su presencia en la Dirección para coordinar su situación escolar.`;
     }
     const url = `https://wa.me/51${alumno.phone}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
@@ -826,7 +827,7 @@ export default function App() {
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v21', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v22', JSON.stringify(nuevosUsuarios));
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -856,7 +857,7 @@ export default function App() {
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v21', JSON.stringify(restantes));
+      localStorage.setItem('dh_usuarios_v22', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -917,7 +918,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v21', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v22', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -946,7 +947,7 @@ export default function App() {
   const [nuevoGradoAlumno, setNuevoGradoAlumno] = useState('PRIMERO');
   const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('RESPONSABILIDAD');
   const [nuevoCelularAlumno, setNuevoCelularAlumno] = useState('');
-  const [busquedaPadrón, setBusquedaPadrón] = useState('');
+  const [busquedaPadron, setBusquedaPadron] = useState('');
 
   const registrarAlumnoNuevo = async (e) => {
     e.preventDefault();
@@ -963,7 +964,7 @@ export default function App() {
 
     const listaActualizada = [...estudiantes, nuevo];
     setEstudiantes(listaActualizada);
-    localStorage.setItem('dh_estudiantes_v21', JSON.stringify(listaActualizada));
+    localStorage.setItem('dh_estudiantes_v22', JSON.stringify(listaActualizada));
 
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
@@ -982,7 +983,7 @@ export default function App() {
     if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
       const restantes = estudiantes.filter(e => e.id !== id);
       setEstudiantes(restantes);
-      localStorage.setItem('dh_estudiantes_v21', JSON.stringify(restantes));
+      localStorage.setItem('dh_estudiantes_v22', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1021,7 +1022,7 @@ export default function App() {
 
     const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
     setEstudiantes(estudiantesActualizados);
-    localStorage.setItem('dh_estudiantes_v21', JSON.stringify(estudiantesActualizados));
+    localStorage.setItem('dh_estudiantes_v22', JSON.stringify(estudiantesActualizados));
 
     try {
       await supabase.from('estudiantes').update({
@@ -1040,16 +1041,16 @@ export default function App() {
     setAlumnoEditando(null);
   };
 
-  const alumnosFiltradosPadrón = useMemo(() => {
-    if (!busquedaPadrón.trim()) return estudiantes;
-    const t = busquedaPadrón.toUpperCase().trim();
+  const alumnosFiltradosPadron = useMemo(() => {
+    if (!busquedaPadron.trim()) return estudiantes;
+    const t = busquedaPadron.toUpperCase().trim();
     return estudiantes.filter(e => 
       e.name.includes(t) || 
       (e.dni && e.dni.includes(t)) || 
       e.grade.includes(t) || 
       e.section.includes(t)
     );
-  }, [estudiantes, busquedaPadrón]);
+  }, [estudiantes, busquedaPadron]);
 
   // LECTOR SIAGIE Y EXCEL
   const procesarArchivoExcel = async (e) => {
@@ -1099,8 +1100,8 @@ export default function App() {
           const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
           row.forEach((colText, idx) => {
             const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (clean.includes('GRADO') && colGrado === -1) colGrado = idx;
-            if (clean.includes('SECCION') && colSeccion === -1) colSeccion = idx;
+            if (clean.includes('GRADO')) colGrado = idx;
+            if (clean.includes('SECCION')) colSeccion = idx;
           });
         }
       }
@@ -1170,7 +1171,7 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        localStorage.setItem('dh_estudiantes_v21', JSON.stringify(cargados));
+        localStorage.setItem('dh_estudiantes_v22', JSON.stringify(cargados));
 
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
@@ -1207,7 +1208,7 @@ export default function App() {
             disabled={sincronizando}
             className="bg-white text-amber-900 px-3 py-1 rounded-lg text-xs font-black shrink-0 shadow flex items-center gap-1 active:scale-95 transition"
           >
-            {sincronizando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5 text-amber-700" />}
+            {sincronizando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-amber-700" />}
             <span>{sincronizando ? 'Subiendo...' : 'Subir Ahora ☁️'}</span>
           </button>
         </div>
@@ -1273,7 +1274,7 @@ export default function App() {
                 vistaDirector === 'asistencia' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
             >
-              <ClipboardCheck className="w-4 h-4 text-emerald-600 shrink-0" /> 
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> 
               <span>Control de Asistencia</span>
             </button>
 
@@ -1466,7 +1467,7 @@ export default function App() {
               <div className="bg-purple-900 text-white p-3.5 rounded-2xl shadow-lg border border-purple-700 animate-fadeIn">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
-                    <Footprints className="w-5 h-5 text-purple-300 animate-bounce" />
+                    <ShieldAlert className="w-5 h-5 text-purple-300 animate-bounce" />
                     <h3 className="text-xs sm:text-sm font-black uppercase tracking-wide">
                       🚨 Evasión Confirmada Hoy ({metricasDirector.evadieronHoyLista.length} alumnos)
                     </h3>
@@ -1582,7 +1583,7 @@ export default function App() {
                         )}
                         {estado === 'E' && (
                           <div className="flex items-center gap-1 bg-purple-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm animate-pulse">
-                            <Footprints className="w-3.5 h-3.5" /> Evasión
+                            <ShieldAlert className="w-3.5 h-3.5" /> Evasión
                           </div>
                         )}
                         {estado === 'J' && (
@@ -2005,7 +2006,7 @@ export default function App() {
               </div>
             )}
 
-            {/* SECCIÓN B: GESTIÓN DE ESTUDIANTES (MATRICULAR, SUBIR EXCEL, BUSCADOR) */}
+            {/* SECCIÓN B: GESTIÓN DE ESTUDIANTES */}
             {subPestanaGestion === 'estudiantes' && (
               <div className="space-y-3.5">
                 
@@ -2100,7 +2101,7 @@ export default function App() {
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-bold text-slate-700 uppercase">
-                      Padrón ({alumnosFiltradosPadrón.length} de {estudiantes.length} alumnos)
+                      Padrón ({alumnosFiltradosPadron.length} de {estudiantes.length} alumnos)
                     </h3>
                   </div>
 
@@ -2109,14 +2110,14 @@ export default function App() {
                     <input
                       type="text"
                       placeholder="Buscar por DNI, Nombre o Aula..."
-                      value={busquedaPadrón}
-                      onChange={(e) => setBusquedaPadrón(e.target.value)}
+                      value={busquedaPadron}
+                      onChange={(e) => setBusquedaPadron(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {alumnosFiltradosPadrón.map(alumno => (
+                    {alumnosFiltradosPadron.map(alumno => (
                       <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
@@ -2159,7 +2160,7 @@ export default function App() {
             <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
                 <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
-                  <UserCog className="w-4 h-4" />
+                  <UserCheck className="w-4 h-4" />
                   <h4>Editar Credenciales y Aulas</h4>
                 </div>
                 <button onClick={() => setPersonalEditando(null)} className="text-slate-400 hover:text-slate-600 p-1">
