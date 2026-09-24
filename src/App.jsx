@@ -5,11 +5,10 @@ import {
   MessageCircle, Search, Calendar, School, ShieldAlert, 
   FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
-  Upload, Edit, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
-  CalendarRange, Filter, Sparkles, KeyRound
+  Upload, Edit3, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
+  CalendarRange, Filter, Sparkles, KeyRound, Save
 } from 'lucide-react';
 
-// Motor oficial de Microsoft Excel (.xlsx)
 const cargarLibreriaExcel = () => {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);
@@ -22,21 +21,21 @@ const cargarLibreriaExcel = () => {
 };
 
 export default function App() {
-  // 1. ESTADO DE CONECTIVIDAD Y COLA OFFLINE
+  // 1. ESTADO DE CONEXIÓN Y COLA OFFLINE
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline_v10');
+    const local = localStorage.getItem('colegio_cola_offline_v12');
     return local ? JSON.parse(local) : [];
   });
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('colegio_cola_offline_v10', JSON.stringify(colaPendientes));
+    localStorage.setItem('colegio_cola_offline_v12', JSON.stringify(colaPendientes));
   }, [colaPendientes]);
 
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v10') || '[]');
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v12') || '[]');
     if (!navigator.onLine || colaActual.length === 0) return;
 
     setSincronizando(true);
@@ -67,7 +66,7 @@ export default function App() {
     }
 
     setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline_v10', JSON.stringify(restantes));
+    localStorage.setItem('colegio_cola_offline_v12', JSON.stringify(restantes));
     setSincronizando(false);
 
     if (enviadosConExito > 0) {
@@ -94,34 +93,56 @@ export default function App() {
     };
   }, [sincronizarColaConSupabase]);
 
-  // 2. GESTIÓN DE USUARIOS (INICIA VACÍO SI ESTÁ LIMPIO)
+  // 2. USUARIOS Y ROLES
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v10');
+    const local = localStorage.getItem('colegio_usuarios_v12');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v10', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v12', JSON.stringify(usuarios));
   }, [usuarios]);
 
-  // Verificar si ya existe un Administrador / Director
+  useEffect(() => {
+    const sincronizarUsuarios = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const { data, error } = await supabase.from('usuarios').select('*');
+        if (!error && data && data.length > 0) {
+          const formateados = data.map(u => ({
+            id: u.id,
+            usuario: u.usuario,
+            clave: u.clave,
+            rol: u.rol,
+            nombre: u.nombre,
+            aulasAsignadas: u.aulas_asignadas || []
+          }));
+          setUsuarios(formateados);
+        }
+      } catch (e) {
+        console.warn('Operando con usuarios locales.');
+      }
+    };
+    sincronizarUsuarios();
+  }, []);
+
   const existeDirector = useMemo(() => {
     return usuarios.some(u => u.rol === 'director');
   }, [usuarios]);
 
-  // Formulario del Primer Registro del Director
+  // PRIMER REGISTRO DEL DIRECTOR
   const [primerNombreDirector, setPrimerNombreDirector] = useState('');
   const [primerUserDirector, setPrimerUserDirector] = useState('');
   const [primerClaveDirector, setPrimerClaveDirector] = useState('');
   const [primerClaveConfirm, setPrimerClaveConfirm] = useState('');
   const [errorPrimerRegistro, setErrorPrimerRegistro] = useState('');
 
-  const registrarPrimerDirector = (e) => {
+  const registrarPrimerDirector = async (e) => {
     e.preventDefault();
     if (!primerNombreDirector.trim() || !primerUserDirector.trim() || !primerClaveDirector) return;
 
     if (primerClaveDirector !== primerClaveConfirm) {
-      setErrorPrimerRegistro('Las contraseñas no coinciden. Verifíquelas.');
+      setErrorPrimerRegistro('Las contraseñas no coinciden.');
       return;
     }
 
@@ -134,15 +155,27 @@ export default function App() {
       aulasAsignadas: []
     };
 
-    const nuevosUsuarios = [directorNuevo];
-    setUsuarios(nuevosUsuarios);
+    setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('colegio_sesion_v10', JSON.stringify(directorNuevo));
+    localStorage.setItem('colegio_sesion_v12', JSON.stringify(directorNuevo));
+
+    try {
+      await supabase.from('usuarios').insert([{
+        id: directorNuevo.id,
+        usuario: directorNuevo.usuario,
+        clave: directorNuevo.clave,
+        rol: directorNuevo.rol,
+        nombre: directorNuevo.nombre,
+        aulas_asignadas: []
+      }]);
+    } catch (err) {
+      console.warn('Error al guardar director en Supabase:', err);
+    }
   };
 
-  // 3. SESIÓN ACTUAL
+  // SESIÓN ACTUAL
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v10');
+    const sesion = localStorage.getItem('colegio_sesion_v12');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -153,21 +186,36 @@ export default function App() {
   const [modalRecuperar, setModalRecuperar] = useState(false);
   const [errorLogin, setErrorLogin] = useState('');
 
-  // 4. PADRÓN DE ESTUDIANTES (INICIA VACÍO O CON DATOS CARGADOS)
+  // 3. PADRÓN DE ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v10');
+    const local = localStorage.getItem('colegio_estudiantes_v12');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v10', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v12', JSON.stringify(estudiantes));
   }, [estudiantes]);
+
+  useEffect(() => {
+    const cargarEstudiantes = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const { data, error } = await supabase.from('estudiantes').select('*');
+        if (!error && data && data.length > 0) {
+          setEstudiantes(data);
+        }
+      } catch (err) {
+        console.warn('Operando con estudiantes locales.');
+      }
+    };
+    cargarEstudiantes();
+  }, []);
 
   const [fechaHoy, setFechaHoy] = useState(new Date().toISOString().split('T')[0]);
   const [rolActivo, setRolActivo] = useState('docente');
 
   const [asistencias, setAsistencias] = useState(() => {
-    const local = localStorage.getItem('colegio_asistencias_v10');
+    const local = localStorage.getItem('colegio_asistencias_v12');
     return local ? JSON.parse(local) : {};
   });
 
@@ -195,7 +243,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('colegio_asistencias_v10', JSON.stringify(asistencias));
+    localStorage.setItem('colegio_asistencias_v12', JSON.stringify(asistencias));
   }, [asistencias]);
 
   const handleLogin = (e) => {
@@ -208,7 +256,7 @@ export default function App() {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
       if (recordarSesion) {
-        localStorage.setItem('colegio_sesion_v10', JSON.stringify(encontrado));
+        localStorage.setItem('colegio_sesion_v12', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -220,14 +268,18 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('colegio_sesion_v10');
+      localStorage.removeItem('colegio_sesion_v12');
     }
   };
 
-  // Restablecer sistema a valores de fábrica
-  const restablecerSistemaDeFabrica = () => {
-    const claveSeguridad = window.prompt('ATENCIÓN: Esto borrará los usuarios y el padrón de este dispositivo para dejarlo virgen.\n\nEscriba "LIMPIAR" para confirmar:');
+  const restablecerSistemaDeFabrica = async () => {
+    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero.\n\nEscriba "LIMPIAR" para confirmar:');
     if (claveSeguridad === 'LIMPIAR') {
+      try {
+        await supabase.from('usuarios').delete().neq('id', 'cero');
+        await supabase.from('estudiantes').delete().neq('id', 'cero');
+        await supabase.from('asistencias').delete().neq('id', 0);
+      } catch (e) {}
       localStorage.clear();
       window.location.reload();
     }
@@ -348,7 +400,7 @@ export default function App() {
     }
   };
 
-  // CONTROL DE PUERTA (AUXILIAR)
+  // CONTROL DE PUERTA
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -451,9 +503,7 @@ export default function App() {
     return { faltasHoy, tardanzasHoy, presentesHoy, enRiesgo, faltaronHoyLista, acumulados };
   }, [asistencias, estudiantes, fechaHoy]);
 
-  // ==========================================
-  // MOTOR DE REPORTES EN EXCEL (.XLSX)
-  // ==========================================
+  // MOTOR DE REPORTES EXCEL (.XLSX)
   const [tipoPeriodoReporte, setTipoPeriodoReporte] = useState('dia');
   const [alcanceReporte, setAlcanceReporte] = useState('todos');
   const [filtroGradoReporte, setFiltroGradoReporte] = useState('PRIMERO');
@@ -635,8 +685,8 @@ export default function App() {
       const wb = XLSX.utils.book_new();
       const plantilla = [
         ['DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCION', 'TELEFONO'],
-        ['74125890', 'RODRIGUEZ LOPEZ MARIO', 'PRIMERO', 'RESPONSABILIDD', '964112233'],
-        ['74125891', 'FLORES QUISPE DIANA', 'SEGUNDO', 'ANDRES AVELINO CACERES', '964223344']
+        ['74125890', 'RODRIGUEZ LOPEZ MARIO', 'PRIMERO', 'A', '964112233'],
+        ['74125891', 'FLORES QUISPE DIANA', 'SEGUNDO', 'B', '964223344']
       ];
       const ws = XLSX.utils.aoa_to_sheet(plantilla);
       ws['!cols'] = [{ wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 25 }, { wch: 15 }];
@@ -647,7 +697,9 @@ export default function App() {
     }
   };
 
-  // Carga Masiva de Alumnos en Excel (.xlsx, .xls)
+  // =========================================================================
+  // CARGA INTELIGENTE DE EXCEL: EVITA CONFUNDIR LA COLUMNA N° CON EL DNI
+  // =========================================================================
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -665,49 +717,123 @@ export default function App() {
         return;
       }
 
+      // 1. Detección por nombres de columna en los primeros 12 renglones
       let filaEncabezados = -1;
-      let colDni = 0, colNombre = 1, colGrado = 2, colSeccion = 3, colTelefono = 4;
+      let colDni = -1, colNombre = -1, colGrado = -1, colSeccion = -1, colTelefono = -1;
 
-      for (let r = 0; r < Math.min(filas.length, 5); r++) {
+      for (let r = 0; r < Math.min(filas.length, 12); r++) {
         const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
         const tieneNombre = row.some(c => c.includes('NOMBRE') || c.includes('APELLIDO') || c.includes('ALUMNO') || c.includes('ESTUDIANTE'));
         if (tieneNombre) {
           filaEncabezados = r;
           row.forEach((colText, idx) => {
-            if (colText.includes('DNI') || colText.includes('DOCUMENTO')) colDni = idx;
-            if (colText.includes('NOMBRE') || colText.includes('APELLIDO') || colText.includes('ALUMNO') || colText.includes('ESTUDIANTE')) colNombre = idx;
-            if (colText.includes('GRADO') || colText.includes('AÑO')) colGrado = idx;
-            if (colText.includes('SECCION') || colText.includes('SECCIÓN') || colText.includes('AULA')) colSeccion = idx;
-            if (colText.includes('TEL') || colText.includes('CEL') || colText.includes('APODERADO') || colText.includes('PADRE')) colTelefono = idx;
+            const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (clean.includes('DNI') || clean.includes('DOCUMENTO') || clean.includes('IDENTIDAD') || clean === 'DOC' || clean.includes('CEDULA')) {
+              colDni = idx;
+            } else if (clean.includes('NOMBRE') || clean.includes('APELLIDO') || clean.includes('ALUMNO') || clean.includes('ESTUDIANTE')) {
+              colNombre = idx;
+            } else if (clean.includes('GRADO') || clean.includes('ANO') || clean.includes('NIVEL') || clean.includes('CICLO')) {
+              colGrado = idx;
+            } else if (clean.includes('SECCION') || clean.includes('AULA') || clean.includes('GRUPO')) {
+              colSeccion = idx;
+            } else if (clean.includes('TEL') || clean.includes('CEL') || clean.includes('APODERADO') || clean.includes('PADRE') || clean.includes('MOVIL')) {
+              colTelefono = idx;
+            }
           });
           break;
         }
       }
 
       const inicio = filaEncabezados !== -1 ? filaEncabezados + 1 : 1;
+      const muestra = filas.slice(inicio, inicio + 10).filter(r => r && r.length > 1);
+
+      // 2. Corrección inteligente por contenido real de las celdas
+      if (muestra.length > 0) {
+        const maxCols = Math.max(...muestra.map(r => r.length));
+
+        // Si colDni no se halló, o apunta erróneamente a la columna N° (con valores 1, 2, 3...)
+        const esColumnaSecuencial = (idx) => {
+          if (idx === -1) return true;
+          const vals = muestra.map(r => String(r[idx] || '').trim());
+          return vals.every(v => /^\d{1,4}$/.test(v)); // Son números pequeños como 1, 2, 3...
+        };
+
+        if (colDni === -1 || esColumnaSecuencial(colDni)) {
+          for (let c = 0; c < maxCols; c++) {
+            if (c === colNombre) continue;
+            const vals = muestra.map(r => {
+              let v = String(r[c] || '').trim();
+              if (v.toLowerCase().includes('e+')) {
+                const num = Number(v);
+                if (!isNaN(num)) v = Math.round(num).toString();
+              }
+              return v.replace(/\D/g, '');
+            });
+
+            // Un DNI real peruano tiene 8 dígitos (o entre 7 y 9 dígitos)
+            const sonDnis = vals.filter(v => v.length >= 7 && v.length <= 9);
+            if (sonDnis.length >= Math.ceil(vals.length * 0.5)) {
+              colDni = c;
+              break;
+            }
+          }
+        }
+
+        // Si el nombre no fue encontrado
+        if (colNombre === -1) {
+          for (let c = 0; c < maxCols; c++) {
+            if (c === colDni) continue;
+            const vals = muestra.map(r => String(r[c] || '').trim());
+            if (vals.some(v => v.length > 5 && v.includes(' '))) {
+              colNombre = c;
+              break;
+            }
+          }
+        }
+      }
+
       const cargados = [];
 
       for (let i = inicio; i < filas.length; i++) {
         const fila = filas[i];
         if (!fila || fila.length === 0) continue;
-        const nombre = String(fila[colNombre] || '').trim().toUpperCase();
+        
+        const nombre = (colNombre !== -1 ? String(fila[colNombre] || '') : '').trim().toUpperCase();
         if (!nombre) continue;
 
+        // Limpieza y validación del DNI
+        let dniExtraido = colDni !== -1 ? String(fila[colDni] || '').trim() : '';
+        if (dniExtraido.toLowerCase().includes('e+')) {
+          const n = Number(dniExtraido);
+          if (!isNaN(n)) dniExtraido = Math.round(n).toString();
+        }
+        dniExtraido = dniExtraido.replace(/\D/g, '');
+        // Si el DNI resultante es menor o igual a 4 dígitos (ej: 1, 2...), no es DNI, se marca S/D
+        if (dniExtraido.length < 5) {
+          dniExtraido = 'S/D';
+        }
+
         cargados.push({
-          id: Date.now() + i,
-          dni: String(fila[colDni] || 'S/D').trim(),
+          id: `est_${Date.now()}_${i}`,
+          dni: dniExtraido,
           name: nombre,
-          grade: String(fila[colGrado] || 'PRIMERO').trim().toUpperCase(),
-          section: String(fila[colSeccion] || 'A').trim().toUpperCase(),
-          phone: String(fila[colTelefono] || '999999999').trim()
+          grade: colGrado !== -1 ? String(fila[colGrado] || 'PRIMERO').trim().toUpperCase() : 'PRIMERO',
+          section: colSeccion !== -1 ? String(fila[colSeccion] || 'A').trim().toUpperCase() : 'A',
+          phone: colTelefono !== -1 ? String(fila[colTelefono] || '999999999').trim() : '999999999'
         });
       }
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        alert(`¡Padrón cargado exitosamente! Se incorporaron ${cargados.length} estudiantes.`);
+        try {
+          await supabase.from('estudiantes').delete().neq('id', 'cero');
+          await supabase.from('estudiantes').insert(cargados);
+        } catch (err) {
+          console.warn('Error al guardar en Supabase:', err);
+        }
+        alert(`¡Padrón procesado con éxito! Se cargaron ${cargados.length} estudiantes sin errores de DNI.`);
       } else {
-        alert('No se detectaron estudiantes válidos en el archivo.');
+        alert('No se detectaron estudiantes válidos. Verifique que el archivo tenga la columna de Nombres.');
       }
     } catch (err) {
       alert('Error al procesar el archivo Excel: ' + err.message);
@@ -728,6 +854,8 @@ export default function App() {
 
   const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
+  // REGISTRO DE DOCENTES Y AUXILIARES
+  const [nuevoRolPersonal, setNuevoRolPersonal] = useState('docente');
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
   const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
@@ -736,9 +864,7 @@ export default function App() {
 
   const alternarSeleccionAula = (claveAula) => {
     setAulasSeleccionadasNuevas(prev => 
-      prev.includes(claveAula)
-        ? prev.filter(c => c !== claveAula)
-        : [...prev, claveAula]
+      prev.includes(claveAula) ? prev.filter(c => c !== claveAula) : [...prev, claveAula]
     );
   };
 
@@ -749,10 +875,58 @@ export default function App() {
   const [nuevaSeccionAlumno, setNuevaSeccionAlumno] = useState('A');
   const [nuevoCelularAlumno, setNuevoCelularAlumno] = useState('');
   
+  // =========================================================================
+  // MODAL DE EDICIÓN COMPLETA DEL ESTUDIANTE (DNI, NOMBRE, GRADO, SECCIÓN, CELULAR)
+  // =========================================================================
   const [alumnoEditando, setAlumnoEditando] = useState(null);
-  const [nuevoTelefonoEdit, setNuevoTelefonoEdit] = useState('');
+  const [editDni, setEditDni] = useState('');
+  const [editNombre, setEditNombre] = useState('');
+  const [editGrado, setEditGrado] = useState('PRIMERO');
+  const [editSeccion, setEditSeccion] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
 
-  const registrarDocente = (e) => {
+  const abrirModalEditarAlumno = (alumno) => {
+    setAlumnoEditando(alumno);
+    setEditDni(alumno.dni === '1' || alumno.dni === 'S/D' ? '' : alumno.dni);
+    setEditNombre(alumno.name);
+    setEditGrado(alumno.grade);
+    setEditSeccion(alumno.section);
+    setEditTelefono(alumno.phone || '');
+  };
+
+  const guardarEdicionCompletaAlumno = async (e) => {
+    e.preventDefault();
+    if (!alumnoEditando) return;
+
+    const estudianteActualizado = {
+      ...alumnoEditando,
+      dni: editDni.trim() || 'S/D',
+      name: editNombre.trim().toUpperCase(),
+      grade: editGrado.trim().toUpperCase(),
+      section: editSeccion.trim().toUpperCase(),
+      phone: editTelefono.trim() || '999999999'
+    };
+
+    // Actualizar estado local
+    setEstudiantes(prev => prev.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a));
+
+    // Guardar en Supabase
+    try {
+      await supabase.from('estudiantes').update({
+        dni: estudianteActualizado.dni,
+        name: estudianteActualizado.name,
+        grade: estudianteActualizado.grade,
+        section: estudianteActualizado.section,
+        phone: estudianteActualizado.phone
+      }).eq('id', alumnoEditando.id);
+    } catch (err) {
+      console.warn('Error al sincronizar actualización en Supabase:', err);
+    }
+
+    setAlumnoEditando(null);
+  };
+
+  const registrarPersonal = async (e) => {
     e.preventDefault();
     if (!nuevoNombreDocente || !nuevoUserDocente || !nuevaClaveDocente) return;
 
@@ -761,21 +935,23 @@ export default function App() {
       return;
     }
 
-    if (aulasSeleccionadasNuevas.length === 0) {
+    if (nuevoRolPersonal === 'docente' && aulasSeleccionadasNuevas.length === 0) {
       setMensajeAdmin('⚠️ Debe seleccionar al menos un aula.');
       return;
     }
 
-    const aulasAsignadas = aulasSeleccionadasNuevas.map(clave => {
-      const [grade, section] = clave.split('|');
-      return { grade, section };
-    });
+    const aulasAsignadas = nuevoRolPersonal === 'docente'
+      ? aulasSeleccionadasNuevas.map(clave => {
+          const [grade, section] = clave.split('|');
+          return { grade, section };
+        })
+      : [];
 
     const nuevo = {
-      id: `doc_${Date.now()}`,
+      id: `usr_${Date.now()}`,
       usuario: nuevoUserDocente.trim().toLowerCase(),
       clave: nuevaClaveDocente,
-      rol: 'docente',
+      rol: nuevoRolPersonal,
       nombre: nuevoNombreDocente.trim(),
       aulasAsignadas: aulasAsignadas
     };
@@ -785,22 +961,38 @@ export default function App() {
     setNuevoUserDocente('');
     setNuevaClaveDocente('');
     setAulasSeleccionadasNuevas([]);
-    setMensajeAdmin('✅ Docente creado exitosamente.');
+    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : 'Auxiliar'} registrado exitosamente.`);
     setTimeout(() => setMensajeAdmin(''), 3000);
-  };
 
-  const eliminarDocente = (id) => {
-    if (window.confirm('¿Está seguro de revocar el acceso a este docente?')) {
-      setUsuarios(prev => prev.filter(u => u.id !== id));
+    try {
+      await supabase.from('usuarios').insert([{
+        id: nuevo.id,
+        usuario: nuevo.usuario,
+        clave: nuevo.clave,
+        rol: nuevo.rol,
+        nombre: nuevo.nombre,
+        aulas_asignadas: nuevo.aulasAsignadas
+      }]);
+    } catch (err) {
+      console.warn('Error al guardar usuario en Supabase:', err);
     }
   };
 
-  const registrarAlumnoNuevo = (e) => {
+  const eliminarDocente = async (id) => {
+    if (window.confirm('¿Está seguro de revocar el acceso a este usuario?')) {
+      setUsuarios(prev => prev.filter(u => u.id !== id));
+      try {
+        await supabase.from('usuarios').delete().eq('id', id);
+      } catch (e) {}
+    }
+  };
+
+  const registrarAlumnoNuevo = async (e) => {
     e.preventDefault();
     if (!nuevoNombreAlumno.trim()) return;
 
     const nuevo = {
-      id: Date.now(),
+      id: `est_${Date.now()}`,
       dni: nuevoDniAlumno.trim() || 'S/D',
       name: nuevoNombreAlumno.trim().toUpperCase(),
       grade: nuevoGradoAlumno,
@@ -814,22 +1006,19 @@ export default function App() {
     setNuevoCelularAlumno('');
     setMensajeAdmin('✅ Alumno matriculado correctamente.');
     setTimeout(() => setMensajeAdmin(''), 3000);
+
+    try {
+      await supabase.from('estudiantes').insert([nuevo]);
+    } catch (err) {}
   };
 
-  const retirarAlumno = (id, nombre) => {
+  const retirarAlumno = async (id, nombre) => {
     if (window.confirm(`¿Confirmas el retiro definitivo del estudiante "${nombre}"?`)) {
       setEstudiantes(prev => prev.filter(e => e.id !== id));
+      try {
+        await supabase.from('estudiantes').delete().eq('id', id);
+      } catch (e) {}
     }
-  };
-
-  const guardarEdicionCelular = (e) => {
-    e.preventDefault();
-    if (!alumnoEditando) return;
-    setEstudiantes(prev => prev.map(a => 
-      a.id === alumnoEditando.id ? { ...a, phone: nuevoTelefonoEdit.trim() } : a
-    ));
-    setAlumnoEditando(null);
-    setNuevoTelefonoEdit('');
   };
 
   const alumnosFiltradosDirector = useMemo(() => {
@@ -843,14 +1032,11 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // =========================================================================
-  // CASO 1: PANTALLA VIRGEN / PRIMER REGISTRO DE LA DIRECCIÓN
-  // =========================================================================
+  // VISTA 1: CONFIGURACIÓN INICIAL DEL DIRECTOR
   if (!existeDirector) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-          
           <div className="bg-emerald-800 p-6 text-center text-white">
             <div className="w-16 h-16 bg-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-emerald-700">
               <Sparkles className="w-9 h-9 text-emerald-300" />
@@ -861,7 +1047,7 @@ export default function App() {
 
           <form onSubmit={registrarPrimerDirector} className="p-5 sm:p-6 space-y-3.5">
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 font-medium leading-relaxed">
-              El sistema se encuentra <b>completamente limpio</b>. Como primer paso, registre la cuenta del <b>Director / Administrador General</b>.
+              El sistema se encuentra en <b>estado virgen</b>. Como primer paso, registre la cuenta del <b>Director / Administrador General</b>.
             </div>
 
             {errorPrimerRegistro && (
@@ -875,7 +1061,7 @@ export default function App() {
               <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre Completo del Director(a)</label>
               <input
                 type="text"
-                placeholder="Ej: Lic. Wilder Huamán Quispe"
+                placeholder="Ej: Lic. Carlos Quispe Reyes"
                 value={primerNombreDirector}
                 onChange={(e) => setPrimerNombreDirector(e.target.value)}
                 required
@@ -897,7 +1083,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña Maestra</label>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -932,14 +1118,11 @@ export default function App() {
     );
   }
 
-  // ==========================================
-  // CASO 2: LOGIN NORMAL DEL COLEGIO
-  // ==========================================
+  // VISTA 2: LOGIN
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-          
           <div className="bg-emerald-700 p-5 sm:p-6 text-center text-white">
             <div className="w-14 h-14 bg-emerald-800 rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
               <School className="w-8 h-8 text-emerald-200" />
@@ -949,16 +1132,15 @@ export default function App() {
           </div>
 
           <form onSubmit={handleLogin} className="p-4 sm:p-6 space-y-4">
-            
             {!estaEnLinea ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-2.5 rounded-xl flex items-center gap-2">
                 <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Modo Sin Señal: Ingreso habilitado en este equipo.</span>
+                <span>Modo Sin Señal: Ingreso habilitado con cuentas en memoria.</span>
               </div>
             ) : (
               <div className="bg-emerald-50 text-emerald-800 text-[11px] font-bold p-2 rounded-xl flex items-center justify-center gap-1.5 border border-emerald-100">
                 <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Acceso Móvil Habilitado</span>
+                <span>Acceso Móvil Institucional</span>
               </div>
             )}
 
@@ -1053,7 +1235,7 @@ export default function App() {
 
               <div className="space-y-2">
                 <a
-                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema de asistencia.')}`}
+                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema.')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow"
@@ -1075,13 +1257,9 @@ export default function App() {
     );
   }
 
-  // ==========================================
-  // CASO 3: APLICACIÓN PRINCIPAL EN FUNCIONAMIENTO
-  // ==========================================
+  // VISTA 3: SISTEMA PRINCIPAL
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
-      
-      {/* BANNERS DE CONEXIÓN */}
       {!estaEnLinea && (
         <div className="bg-amber-500 text-amber-950 px-3 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 shadow-sm sticky top-0 z-40">
           <WifiOff className="w-4 h-4 shrink-0" />
@@ -1112,7 +1290,6 @@ export default function App() {
         </div>
       )}
 
-      {/* CABECERA */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2">
@@ -1156,7 +1333,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑAS */}
         <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/60 bg-emerald-800/40">
           {(usuarioAutenticado.rol === 'director' || usuarioAutenticado.rol === 'docente') && (
             <button 
@@ -1196,10 +1372,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-2xl mx-auto w-full px-3.5 pt-3.5 flex-1">
-        
-        {/* AULA DOCENTE */}
+        {/* EN AULA */}
         {rolActivo === 'docente' && (
           <div className="space-y-3.5">
             {aulasPermitidasDocente.length === 0 ? (
@@ -1207,7 +1381,7 @@ export default function App() {
                 <School className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                 <h3 className="font-bold text-slate-700 text-sm">No hay aulas asignadas</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  La Dirección debe registrar o importar estudiantes desde el Panel de Director.
+                  La Dirección debe registrar o subir los estudiantes para habilitar los salones.
                 </p>
               </div>
             ) : (
@@ -1286,7 +1460,7 @@ export default function App() {
                             <div className="min-w-0">
                               <p className="font-bold text-slate-800 text-xs sm:text-sm leading-tight truncate">{alumno.name}</p>
                               <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                                {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}Apod: {alumno.phone}
+                                {alumno.dni && alumno.dni !== 'S/D' ? `DNI: ${alumno.dni} • ` : ''}Apod: {alumno.phone}
                               </p>
                             </div>
                           </div>
@@ -1380,7 +1554,7 @@ export default function App() {
                   <div className="min-w-0">
                     <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{alumno.name}</p>
                     <p className="text-[11px] text-slate-500 truncate">
-                      {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}
+                      {alumno.dni && alumno.dni !== 'S/D' ? `DNI: ${alumno.dni} • ` : ''}
                       <span className="text-emerald-700 font-semibold">{alumno.grade} - {alumno.section}</span>
                     </p>
                   </div>
@@ -1400,7 +1574,6 @@ export default function App() {
         {/* PANEL DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-3.5">
-            
             <div className="flex bg-slate-200 p-1 rounded-xl">
               <button
                 onClick={() => setPestanaDirector('metricas')}
@@ -1408,7 +1581,7 @@ export default function App() {
                   pestanaDirector === 'metricas' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📊 Reportes Excel
+                📊 Reportes
               </button>
               <button
                 onClick={() => setPestanaDirector('alumnos')}
@@ -1424,11 +1597,11 @@ export default function App() {
                   pestanaDirector === 'docentes' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                👥 Aulas
+                👥 Personal y Aulas
               </button>
             </div>
 
-            {/* SECCIÓN REPORTES */}
+            {/* REPORTES */}
             {pestanaDirector === 'metricas' && (
               <>
                 <div className="grid grid-cols-3 gap-2">
@@ -1665,7 +1838,7 @@ export default function App() {
               </>
             )}
 
-            {/* PADRÓN Y ALUMNOS */}
+            {/* PADRÓN DE ESTUDIANTES */}
             {pestanaDirector === 'alumnos' && (
               <div className="space-y-3.5">
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
@@ -1780,7 +1953,7 @@ export default function App() {
                   </h3>
 
                   {estudiantes.length === 0 ? (
-                    <p className="text-xs text-slate-500 text-center py-4">No hay estudiantes cargados. Suba el archivo de Excel arriba.</p>
+                    <p className="text-xs text-slate-500 text-center py-4">No hay estudiantes cargados. Suba el archivo Excel arriba.</p>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                       {alumnosFiltradosDirector.map(alumno => (
@@ -1788,29 +1961,30 @@ export default function App() {
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                              {alumno.dni ? `DNI: ${alumno.dni} • ` : ''}
-                              <span className="font-semibold text-emerald-700">{alumno.grade} - {alumno.section}</span>
+                              <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
+                                DNI: {alumno.dni || 'S/D'}
+                              </span>
+                              {' • '}
+                              <span className="font-semibold text-slate-600">{alumno.grade} - {alumno.section}</span>
                             </p>
                             <p className="text-[10px] text-slate-600 flex items-center gap-1 mt-0.5">
                               <Phone className="w-3 h-3 text-slate-400" /> {alumno.phone}
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* BOTÓN DE EDICIÓN COMPLETA */}
                             <button
-                              onClick={() => {
-                                setAlumnoEditando(alumno);
-                                setNuevoTelefonoEdit(alumno.phone);
-                              }}
-                              className="bg-blue-50 text-blue-700 p-2 rounded-lg text-xs font-bold"
-                              title="Editar celular"
+                              onClick={() => abrirModalEditarAlumno(alumno)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
+                              title="Editar DNI, nombre, grado o sección"
                             >
-                              <Edit className="w-3.5 h-3.5" />
+                              <Edit3 className="w-3.5 h-3.5" /> Editar
                             </button>
                             
                             <button
                               onClick={() => retirarAlumno(alumno.id, alumno.name)}
-                              className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg"
+                              className="text-rose-600 hover:bg-rose-50 p-2 rounded-xl transition"
                               title="Dar de baja"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1822,33 +1996,110 @@ export default function App() {
                   )}
                 </div>
 
+                {/* MODAL DE EDICIÓN COMPLETA DEL ESTUDIANTE */}
                 {alumnoEditando && (
-                  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-bold text-slate-800 text-sm">Editar Celular</h4>
-                        <button onClick={() => setAlumnoEditando(null)} className="text-slate-400 hover:text-slate-600">
-                          <X className="w-4 h-4" />
+                  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+                      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
+                          <Edit3 className="w-4 h-4" />
+                          <h4>Editar Datos del Estudiante</h4>
+                        </div>
+                        <button onClick={() => setAlumnoEditando(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                          <X className="w-5 h-5" />
                         </button>
                       </div>
-                      <p className="text-xs text-slate-600 mb-3 truncate">
-                        Alumno: <b>{alumnoEditando.name}</b>
-                      </p>
-                      <form onSubmit={guardarEdicionCelular} className="space-y-3">
-                        <input
-                          type="tel"
-                          value={nuevoTelefonoEdit}
-                          onChange={(e) => setNuevoTelefonoEdit(e.target.value)}
-                          required
-                          placeholder="Ej: 964123456"
-                          className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <button
-                          type="submit"
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow"
-                        >
-                          Guardar Número
-                        </button>
+
+                      <form onSubmit={guardarEdicionCompletaAlumno} className="space-y-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                            Documento de Identidad (DNI):
+                          </label>
+                          <input
+                            type="text"
+                            value={editDni}
+                            onChange={(e) => setEditDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            placeholder="Ingrese los 8 dígitos"
+                            maxLength={8}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                            Apellidos y Nombres:
+                          </label>
+                          <input
+                            type="text"
+                            value={editNombre}
+                            onChange={(e) => setEditNombre(e.target.value)}
+                            required
+                            placeholder="APELLIDOS Y NOMBRES"
+                            className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                              Grado:
+                            </label>
+                            <select
+                              value={editGrado}
+                              onChange={(e) => setEditGrado(e.target.value)}
+                              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                            >
+                              <option value="PRIMERO">PRIMERO</option>
+                              <option value="SEGUNDO">SEGUNDO</option>
+                              <option value="TERCERO">TERCERO</option>
+                              <option value="CUARTO">CUARTO</option>
+                              <option value="QUINTO">QUINTO</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                              Sección:
+                            </label>
+                            <input
+                              type="text"
+                              value={editSeccion}
+                              onChange={(e) => setEditSeccion(e.target.value.toUpperCase())}
+                              required
+                              placeholder="Ej: A"
+                              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                            Celular del Apoderado:
+                          </label>
+                          <input
+                            type="tel"
+                            value={editTelefono}
+                            onChange={(e) => setEditTelefono(e.target.value)}
+                            placeholder="Ej: 964123456"
+                            className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setAlumnoEditando(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                          >
+                            <Save className="w-4 h-4" /> Guardar Cambios
+                          </button>
+                        </div>
                       </form>
                     </div>
                   </div>
@@ -1856,13 +2107,13 @@ export default function App() {
               </div>
             )}
 
-            {/* GESTIÓN DE DOCENTES Y REINICIO */}
+            {/* GESTIÓN DE PERSONAL Y AULAS */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-3.5">
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-2.5 text-xs">
                     <UserPlus className="w-4 h-4" />
-                    <h3>Registrar Docente y Asignar Aulas</h3>
+                    <h3>Registrar Docente o Auxiliar (Crear Cuenta)</h3>
                   </div>
 
                   {mensajeAdmin && (
@@ -1871,10 +2122,34 @@ export default function App() {
                     </div>
                   )}
 
-                  <form onSubmit={registrarDocente} className="space-y-2.5">
+                  <form onSubmit={registrarPersonal} className="space-y-2.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Tipo de Personal</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNuevoRolPersonal('docente')}
+                          className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                            nuevoRolPersonal === 'docente' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5" /> Docente de Aula
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNuevoRolPersonal('auxiliar')}
+                          className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                            nuevoRolPersonal === 'auxiliar' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <Clock className="w-3.5 h-3.5" /> Auxiliar de Puerta
+                        </button>
+                      </div>
+                    </div>
+
                     <input
                       type="text"
-                      placeholder="Nombre y Especialidad"
+                      placeholder={nuevoRolPersonal === 'docente' ? "Nombre completo y Área (ej: Prof. Mario - Mat)" : "Nombre completo del Auxiliar"}
                       value={nuevoNombreDocente}
                       onChange={(e) => setNuevoNombreDocente(e.target.value)}
                       required
@@ -1884,7 +2159,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Usuario"
+                        placeholder="Usuario para login"
                         value={nuevoUserDocente}
                         onChange={(e) => setNuevoUserDocente(e.target.value)}
                         required
@@ -1900,74 +2175,80 @@ export default function App() {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
-                        Marcar aulas que dictará ({aulasSeleccionadasNuevas.length} elegidas):
-                      </label>
-                      {todasLasAulasColegio.length === 0 ? (
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg">Primero suba el archivo de alumnos en la pestaña Padrón para que aparezcan las aulas.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
-                          {todasLasAulasColegio.map(aula => {
-                            const clave = `${aula.grade}|${aula.section}`;
-                            const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
-                            return (
-                              <button
-                                type="button"
-                                key={clave}
-                                onClick={() => alternarSeleccionAula(clave)}
-                                className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between ${
-                                  estaMarcada 
-                                    ? 'bg-emerald-600 text-white border-emerald-700' 
-                                    : 'bg-white text-slate-700 border-slate-300'
-                                }`}
-                              >
-                                <span className="truncate">{aula.grade} - {aula.section}</span>
-                                {estaMarcada && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                    {nuevoRolPersonal === 'docente' && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                          Aulas asignadas a este docente ({aulasSeleccionadasNuevas.length} elegidas):
+                        </label>
+                        {todasLasAulasColegio.length === 0 ? (
+                          <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg">
+                            Primero cargue los alumnos en la pestaña Padrón para que se generen las aulas del colegio.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                            {todasLasAulasColegio.map(aula => {
+                              const clave = `${aula.grade}|${aula.section}`;
+                              const estaMarcada = aulasSeleccionadasNuevas.includes(clave);
+                              return (
+                                <button
+                                  type="button"
+                                  key={clave}
+                                  onClick={() => alternarSeleccionAula(clave)}
+                                  className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between ${
+                                    estaMarcada 
+                                      ? 'bg-emerald-600 text-white border-emerald-700' 
+                                      : 'bg-white text-slate-700 border-slate-300'
+                                  }`}
+                                >
+                                  <span className="truncate">{aula.grade} - {aula.section}</span>
+                                  {estaMarcada && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <button
                       type="submit"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
                     >
-                      <UserPlus className="w-4 h-4" /> Crear Cuenta Docente
+                      <UserPlus className="w-4 h-4" /> Crear Cuenta y Guardar en la Nube
                     </button>
                   </form>
                 </div>
 
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <h3 className="text-xs font-bold text-slate-700 uppercase mb-2.5">
-                    Docentes Registrados
+                    Personal Registrado en el Sistema
                   </h3>
 
                   <div className="space-y-2">
-                    {usuarios.filter(u => u.rol === 'docente').map(doc => (
-                      <div key={doc.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-2">
+                    {usuarios.filter(u => u.rol !== 'director').map(usr => (
+                      <div key={usr.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{doc.nombre}</p>
+                          <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{usr.nombre}</p>
                           <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                            User: <b>{doc.usuario}</b> | Clave: <code>{doc.clave}</code>
+                            Rol: <b className="uppercase text-emerald-800">{usr.rol}</b> | User: <b>{usr.usuario}</b> | Clave: <code>{usr.clave}</code>
                           </p>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {doc.aulasAsignadas && doc.aulasAsignadas.length > 0 ? (
-                              doc.aulasAsignadas.map((a, i) => (
-                                <span key={i} className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                                  {a.grade} - {a.section}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-[9px] text-slate-400">Sin salones</span>
-                            )}
-                          </div>
+                          {usr.rol === 'docente' && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {usr.aulasAsignadas && usr.aulasAsignadas.length > 0 ? (
+                                usr.aulasAsignadas.map((a, i) => (
+                                  <span key={i} className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                                    {a.grade} - {a.section}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-[9px] text-slate-400">Sin salones</span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <button
-                          onClick={() => eliminarDocente(doc.id)}
+                          onClick={() => eliminarDocente(usr.id)}
                           className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg shrink-0"
                           title="Revocar acceso"
                         >
@@ -1978,26 +2259,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ZONA DE SEGURIDAD / RESETEO TOTAL */}
                 <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl">
-                  <h4 className="text-xs font-bold text-rose-800 uppercase mb-1">Zona de Entrega del Software</h4>
+                  <h4 className="text-xs font-bold text-rose-800 uppercase mb-1">Zona de Entrega de Software</h4>
                   <p className="text-[11px] text-rose-700 mb-2.5">
-                    Si desea entregar el sistema en blanco para que el Director sea el primero en configurarlo:
+                    Permite borrar cuentas y registros para entregar la aplicación 100% limpia a la institución:
                   </p>
                   <button
                     onClick={restablecerSistemaDeFabrica}
                     className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Dejar Sistema Virgen de Fábrica
+                    <Trash2 className="w-3.5 h-3.5" /> Restablecer a Cero de Fábrica
                   </button>
                 </div>
               </div>
             )}
-
           </div>
         )}
 
-        {/* BOTÓN SECUNDARIO DE SALIDA */}
         <div className="mt-8 pt-4 border-t border-slate-200 flex flex-col items-center gap-2">
           <p className="text-[11px] text-slate-400 font-medium">
             Conectado como <b>{usuarioAutenticado.nombre}</b>
@@ -2009,7 +2287,6 @@ export default function App() {
             <LogOut className="w-4 h-4 text-rose-600" /> Cerrar Sesión Segura
           </button>
         </div>
-
       </main>
     </div>
   );
