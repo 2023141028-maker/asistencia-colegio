@@ -7,7 +7,7 @@ import {
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
   Upload, Edit3, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
-  Loader2, Footprints, FileText, UserCog
+  Loader2, Footprints, FileText, UserCog, CloudUpload
 } from 'lucide-react';
 
 // Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
@@ -49,6 +49,14 @@ const AULAS_OFICIALES_DH = [
   { grade: 'QUINTO', section: 'I. KANT' }
 ];
 
+// Función de auxilio para evitar cuelgues por mala señal (Timeout de 2.5s)
+const conLimiteDeTiempo = (promesa, ms = 2500) => {
+  return Promise.race([
+    promesa,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_CONEXION')), ms))
+  ]);
+};
+
 const cargarLibreriaExcel = () => {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);
@@ -63,159 +71,181 @@ const cargarLibreriaExcel = () => {
 export default function App() {
   const [cargandoInicial, setCargandoInicial] = useState(true);
 
-  // RED Y COLA OFFLINE
+  // ESTADO DE RED
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline_v18');
-    return local ? JSON.parse(local) : [];
+    try {
+      const local = localStorage.getItem('dh_cola_offline_v19');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
   });
+
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('colegio_cola_offline_v18', JSON.stringify(colaPendientes));
-  }, [colaPendientes]);
-
+  // Sincronizar cola pendiente con Supabase
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v18') || '[]');
-    if (!navigator.onLine || colaActual.length === 0) return;
+    let colaActual = [];
+    try {
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v19') || '[]');
+    } catch {
+      colaActual = [];
+    }
+
+    if (colaActual.length === 0) return;
 
     setSincronizando(true);
-    let enviadosConExito = 0;
-    const restantes = [];
+    let subidosConExito = 0;
+    const fallidos = [];
 
     for (const item of colaActual) {
       try {
         if (item.tipo === 'aula') {
-          await supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('seccion', item.seccion);
-          const { error } = await supabase.from('asistencias').insert(item.filas);
+          await conLimiteDeTiempo(
+            supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('seccion', item.seccion),
+            3000
+          );
+          const { error } = await conLimiteDeTiempo(
+            supabase.from('asistencias').insert(item.filas),
+            3000
+          );
           if (error) throw error;
         } else if (item.tipo === 'puerta') {
-          await supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('estudiante_id', item.estudiante_id);
-          const { error } = await supabase.from('asistencias').insert(item.filas);
+          await conLimiteDeTiempo(
+            supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('estudiante_id', item.estudiante_id),
+            3000
+          );
+          const { error } = await conLimiteDeTiempo(
+            supabase.from('asistencias').insert(item.filas),
+            3000
+          );
           if (error) throw error;
         }
-        enviadosConExito++;
+        subidosConExito++;
       } catch (err) {
-        restantes.push(item);
+        fallidos.push(item);
       }
     }
 
-    setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline_v18', JSON.stringify(restantes));
+    setColaPendientes(fallidos);
+    localStorage.setItem('dh_cola_offline_v19', JSON.stringify(fallidos));
     setSincronizando(false);
 
-    if (enviadosConExito > 0) {
-      setAvisoSync(`¡Conexión restaurada! Se sincronizaron ${enviadosConExito} asistencia(s) con la nube.`);
+    if (subidosConExito > 0) {
+      setAvisoSync(`¡Excelente! Se sincronizaron ${subidosConExito} paquete(s) con la nube.`);
       setTimeout(() => setAvisoSync(''), 4500);
     }
   }, []);
 
+  // Escuchar reconexión a internet
   useEffect(() => {
-    const alConectar = () => {
+    const alVolverInternet = () => {
       setEstaEnLinea(true);
       sincronizarColaConSupabase();
     };
-    const alDesconectar = () => setEstaEnLinea(false);
+    const alPerderInternet = () => setEstaEnLinea(false);
 
-    window.addEventListener('online', alConectar);
-    window.addEventListener('offline', alDesconectar);
-
-    if (navigator.onLine) sincronizarColaConSupabase();
+    window.addEventListener('online', alVolverInternet);
+    window.addEventListener('offline', alPerderInternet);
 
     return () => {
-      window.removeEventListener('online', alConectar);
-      window.removeEventListener('offline', alDesconectar);
+      window.removeEventListener('online', alVolverInternet);
+      window.removeEventListener('offline', alPerderInternet);
     };
   }, [sincronizarColaConSupabase]);
 
-  // USUARIOS
+  // USUARIOS EN MEMORIA LOCAL
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v18');
-    return local ? JSON.parse(local) : [];
+    try {
+      const local = localStorage.getItem('dh_usuarios_v19');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
   });
 
-  useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v18', JSON.stringify(usuarios));
-  }, [usuarios]);
-
-  // PADRÓN DE ESTUDIANTES
+  // ESTUDIANTES EN MEMORIA LOCAL
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v18');
-    return local ? JSON.parse(local) : [];
+    try {
+      const local = localStorage.getItem('dh_estudiantes_v19');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
   });
 
-  useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v18', JSON.stringify(estudiantes));
-  }, [estudiantes]);
-
-  // ASISTENCIAS
+  // ASISTENCIAS EN MEMORIA LOCAL
   const [asistencias, setAsistencias] = useState(() => {
-    const local = localStorage.getItem('colegio_asistencias_v18');
-    return local ? JSON.parse(local) : {};
+    try {
+      const local = localStorage.getItem('dh_asistencias_v19');
+      return local ? JSON.parse(local) : {};
+    } catch {
+      return {};
+    }
   });
 
+  // ARRANQUE BLINDADO: Intenta descargar de Supabase; si demora más de 1.8 segundos, abre con datos locales
   useEffect(() => {
-    localStorage.setItem('colegio_asistencias_v18', JSON.stringify(asistencias));
-  }, [asistencias]);
+    let montado = true;
 
-  // DESCARGA INICIAL DESDE SUPABASE
-  useEffect(() => {
-    const sincronizarNubeCompleta = async () => {
-      if (!navigator.onLine) {
-        setCargandoInicial(false);
-        return;
-      }
-
+    const iniciarApp = async () => {
       try {
-        const resUser = await supabase.from('usuarios').select('*');
-        if (!resUser.error && resUser.data && resUser.data.length > 0) {
-          const formateados = resUser.data.map(u => ({
-            id: u.id,
-            usuario: u.usuario,
-            clave: u.clave,
-            rol: u.rol,
-            nombre: u.nombre,
-            aulasAsignadas: u.aulas_asignadas || []
-          }));
-          setUsuarios(formateados);
-          localStorage.setItem('colegio_usuarios_v18', JSON.stringify(formateados));
-        }
+        if (navigator.onLine) {
+          // Intentar descargar usuarios con timeout de 2 segundos
+          const resUser = await conLimiteDeTiempo(supabase.from('usuarios').select('*'), 2000).catch(() => null);
+          if (resUser && !resUser.error && resUser.data && resUser.data.length > 0 && montado) {
+            const formateados = resUser.data.map(u => ({
+              id: u.id,
+              usuario: u.usuario,
+              clave: u.clave,
+              rol: u.rol,
+              nombre: u.nombre,
+              aulasAsignadas: u.aulas_asignadas || []
+            }));
+            setUsuarios(formateados);
+            localStorage.setItem('dh_usuarios_v19', JSON.stringify(formateados));
+          }
 
-        const resEst = await supabase.from('estudiantes').select('*');
-        if (!resEst.error && resEst.data && resEst.data.length > 0) {
-          setEstudiantes(resEst.data);
-          localStorage.setItem('colegio_estudiantes_v18', JSON.stringify(resEst.data));
-        }
+          // Intentar descargar estudiantes con timeout de 2 segundos
+          const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
+          if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
+            setEstudiantes(resEst.data);
+            localStorage.setItem('dh_estudiantes_v19', JSON.stringify(resEst.data));
+          }
 
-        const resAsis = await supabase.from('asistencias').select('*');
-        if (!resAsis.error && resAsis.data && resAsis.data.length > 0) {
-          const agrupadas = {};
-          resAsis.data.forEach(reg => {
-            if (!agrupadas[reg.fecha]) agrupadas[reg.fecha] = {};
-            agrupadas[reg.fecha][reg.estudiante_id] = {
-              status: reg.estado,
-              time: reg.created_at ? new Date(reg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00'
-            };
-          });
-          setAsistencias(prev => ({ ...prev, ...agrupadas }));
-          localStorage.setItem('colegio_asistencias_v18', JSON.stringify(agrupadas));
+          // Intentar descargar asistencias con timeout de 2 segundos
+          const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
+          if (resAsis && !resAsis.error && resAsis.data && resAsis.data.length > 0 && montado) {
+            const agrupadas = {};
+            resAsis.data.forEach(reg => {
+              if (!agrupadas[reg.fecha]) agrupadas[reg.fecha] = {};
+              agrupadas[reg.fecha][reg.estudiante_id] = {
+                status: reg.estado,
+                time: reg.created_at ? new Date(reg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00'
+              };
+            });
+            setAsistencias(prev => ({ ...prev, ...agrupadas }));
+            localStorage.setItem('dh_asistencias_v19', JSON.stringify(agrupadas));
+          }
         }
-      } catch (err) {
-        console.warn('Conexión con Supabase:', err);
+      } catch (e) {
+        console.warn('Iniciando en modo local/offline.');
       } finally {
-        setCargandoInicial(false);
+        if (montado) setCargandoInicial(false);
       }
     };
 
-    sincronizarNubeCompleta();
+    iniciarApp();
+    return () => { montado = false; };
   }, []);
 
   const existeDirector = useMemo(() => {
     return usuarios.some(u => u.rol === 'director');
   }, [usuarios]);
 
-  // REGISTRO INICIAL DEL DIRECTOR
+  // REGISTRO INICIAL DIRECTOR
   const [primerNombreDirector, setPrimerNombreDirector] = useState('');
   const [primerUserDirector, setPrimerUserDirector] = useState('');
   const [primerClaveDirector, setPrimerClaveDirector] = useState('');
@@ -242,37 +272,40 @@ export default function App() {
       aulasAsignadas: []
     };
 
+    // Guardado local inmediato
+    setUsuarios([directorNuevo]);
+    setUsuarioAutenticado(directorNuevo);
+    localStorage.setItem('dh_usuarios_v19', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v19', JSON.stringify(directorNuevo));
+
+    // Guardado remoto en segundo plano
     try {
-      const { error } = await supabase.from('usuarios').upsert([{
-        id: directorNuevo.id,
-        usuario: directorNuevo.usuario,
-        clave: directorNuevo.clave,
-        rol: directorNuevo.rol,
-        nombre: directorNuevo.nombre,
-        aulas_asignadas: []
-      }]);
-
-      if (error) {
-        alert('Error al guardar en Supabase: ' + error.message);
-        setGuardandoDirector(false);
-        return;
-      }
-
-      setUsuarios([directorNuevo]);
-      setUsuarioAutenticado(directorNuevo);
-      localStorage.setItem('colegio_usuarios_v18', JSON.stringify([directorNuevo]));
-      localStorage.setItem('colegio_sesion_v18', JSON.stringify(directorNuevo));
+      await conLimiteDeTiempo(
+        supabase.from('usuarios').upsert([{
+          id: directorNuevo.id,
+          usuario: directorNuevo.usuario,
+          clave: directorNuevo.clave,
+          rol: directorNuevo.rol,
+          nombre: directorNuevo.nombre,
+          aulas_asignadas: []
+        }]),
+        3000
+      );
     } catch (err) {
-      alert('Error al registrar: ' + err.message);
+      console.warn('Director guardado en memoria del celular.');
     } finally {
       setGuardandoDirector(false);
     }
   };
 
-  // SESIÓN
+  // SESIÓN ACTUAL
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v18');
-    return sesion ? JSON.parse(sesion) : null;
+    try {
+      const sesion = localStorage.getItem('dh_sesion_v19');
+      return sesion ? JSON.parse(sesion) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [inputUsuario, setInputUsuario] = useState('');
@@ -295,7 +328,7 @@ export default function App() {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
       if (recordarSesion) {
-        localStorage.setItem('colegio_sesion_v18', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v19', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -307,12 +340,12 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('colegio_sesion_v18');
+      localStorage.removeItem('dh_sesion_v19');
     }
   };
 
   const restablecerSistemaDeFabrica = async () => {
-    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero tanto en este dispositivo como en la nube.\n\nEscriba "LIMPIAR" para confirmar:');
+    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá la aplicación a cero.\n\nEscriba "LIMPIAR" para confirmar:');
     if (claveSeguridad === 'LIMPIAR') {
       try {
         await supabase.from('usuarios').delete().neq('id', 'cero');
@@ -377,7 +410,7 @@ export default function App() {
     setAsistenciaAula(inicial);
   }, [alumnosAula, fechaHoy, asistencias]);
 
-  // ROTACIÓN CON EVASIÓN Y PERMISO JUSTIFICADO: P -> T -> F -> E -> J -> P
+  // ROTACIÓN RÁPIDA: P -> T -> F -> E -> J -> P
   const alternarEstadoAlumno = (id) => {
     setAsistenciaAula(prev => {
       const actual = prev[id] || 'P';
@@ -390,18 +423,23 @@ export default function App() {
     });
   };
 
+  // =========================================================================
+  // GUARDAR ASISTENCIA DE AULA (BLINDADO OFFLINE CON ESCRITURA EN DISCO DIRECTA)
+  // =========================================================================
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    setAsistencias(prev => {
-      const dia = { ...(prev[fechaHoy] || {}) };
-      Object.keys(asistenciaAula).forEach(id => {
-        dia[id] = { status: asistenciaAula[id], time: hora };
-      });
-      return { ...prev, [fechaHoy]: dia };
-    });
-
     const seccionCompleta = `${gradoSel} - ${seccionSel}`;
+
+    // 1. PASO VITAL: Guardar de inmediato en la memoria local (Disco del celular)
+    const nuevoDia = { ...(asistencias[fechaHoy] || {}) };
+    Object.keys(asistenciaAula).forEach(id => {
+      nuevoDia[id] = { status: asistenciaAula[id], time: hora };
+    });
+    const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
+    setAsistencias(asistenciasActualizadas);
+    localStorage.setItem('dh_asistencias_v19', JSON.stringify(asistenciasActualizadas));
+
+    // 2. Preparar el paquete de datos
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
       estudiante_id: String(alumno.id),
@@ -419,30 +457,62 @@ export default function App() {
       filas: filas
     };
 
-    if (!navigator.onLine) {
-      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
-      setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Offline)');
+    // Función auxiliar para encolar cuando no hay internet
+    const guardarEnColaLocal = () => {
+      let colaActual = [];
+      try {
+        colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v19') || '[]');
+      } catch {
+        colaActual = [];
+      }
+      const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
+      setColaPendientes(nuevaCola);
+      localStorage.setItem('dh_cola_offline_v19', JSON.stringify(nuevaCola));
+
+      setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
       setTimeout(() => setGuardadoExitoso(false), 3000);
+    };
+
+    // Si el navegador avisa que está desconectado, ni siquiera intenta hacer petición HTTP
+    if (!navigator.onLine) {
+      guardarEnColaLocal();
       return;
     }
 
+    // 3. Intentar subir a Supabase con límite estricto de 2.5 segundos
     try {
-      await supabase.from('asistencias').delete().eq('fecha', fechaHoy).eq('seccion', seccionCompleta);
-      const { error } = await supabase.from('asistencias').insert(filas);
+      await conLimiteDeTiempo(
+        supabase.from('asistencias').delete().eq('fecha', fechaHoy).eq('seccion', seccionCompleta),
+        2500
+      );
+      const { error } = await conLimiteDeTiempo(
+        supabase.from('asistencias').insert(filas),
+        2500
+      );
       if (error) throw error;
+
+      // Si subió con éxito, limpiar de la cola si estaba pendiente
+      let colaActual = [];
+      try {
+        colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v19') || '[]');
+      } catch {
+        colaActual = [];
+      }
+      const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
+      setColaPendientes(nuevaCola);
+      localStorage.setItem('dh_cola_offline_v19', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
       setTimeout(() => setGuardadoExitoso(false), 2500);
     } catch (err) {
-      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete]);
-      setMensajeGuardado('Sin señal: Guardado en teléfono 📱');
-      setGuardadoExitoso(true);
-      setTimeout(() => setGuardadoExitoso(false), 3000);
+      // Si la conexión falló o demoró más de 2.5s, se resguarda en la cola offline inmediatamente
+      guardarEnColaLocal();
     }
   };
 
+  // CONTROL DE PUERTA / PABELLÓN
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -475,11 +545,12 @@ export default function App() {
     const esTarde = horas > 8 || (horas === 8 && minutos > 0);
     const estadoAsignado = esTarde ? 'T' : 'P';
 
-    setAsistencias(prev => {
-      const dia = { ...(prev[fechaHoy] || {}) };
-      dia[alumno.id] = { status: estadoAsignado, time: horaTexto };
-      return { ...prev, [fechaHoy]: dia };
-    });
+    // 1. Guardar en memoria local directamente
+    const nuevoDia = { ...(asistencias[fechaHoy] || {}) };
+    nuevoDia[alumno.id] = { status: estadoAsignado, time: horaTexto };
+    const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
+    setAsistencias(asistenciasActualizadas);
+    localStorage.setItem('dh_asistencias_v19', JSON.stringify(asistenciasActualizadas));
 
     if (esTarde) {
       setMensajePuerta(`⚠️ Tardanza: ${alumno.name} (${horaTexto})`);
@@ -507,21 +578,39 @@ export default function App() {
       filas: filaPuerta
     };
 
+    const encolarPuerta = () => {
+      let colaActual = [];
+      try {
+        colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v19') || '[]');
+      } catch {
+        colaActual = [];
+      }
+      const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'puerta' && p.fecha === fechaHoy && p.estudiante_id === String(alumno.id))), paquetePuerta];
+      setColaPendientes(nuevaCola);
+      localStorage.setItem('dh_cola_offline_v19', JSON.stringify(nuevaCola));
+    };
+
     if (!navigator.onLine) {
-      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'puerta' && p.fecha === fechaHoy && p.estudiante_id === String(alumno.id))), paquetePuerta]);
+      encolarPuerta();
       return;
     }
 
     try {
-      await supabase.from('asistencias').delete().eq('fecha', fechaHoy).eq('estudiante_id', String(alumno.id));
-      const { error } = await supabase.from('asistencias').insert(filaPuerta);
+      await conLimiteDeTiempo(
+        supabase.from('asistencias').delete().eq('fecha', fechaHoy).eq('estudiante_id', String(alumno.id)),
+        2000
+      );
+      const { error } = await conLimiteDeTiempo(
+        supabase.from('asistencias').insert(filaPuerta),
+        2000
+      );
       if (error) throw error;
     } catch (err) {
-      setColaPendientes(prev => [...prev.filter(p => !(p.tipo === 'puerta' && p.fecha === fechaHoy && p.estudiante_id === String(alumno.id))), paquetePuerta]);
+      encolarPuerta();
     }
   };
 
-  // MÉTRICAS Y DETECCIÓN
+  // MÉTRICAS
   const metricasDirector = useMemo(() => {
     const dia = asistencias[fechaHoy] || {};
     let faltasHoy = 0;
@@ -764,7 +853,7 @@ export default function App() {
     }
   };
 
-  // LECTOR INTEGRADO DE ARCHIVOS SIAGIE Y EXCEL ESTÁNDAR
+  // LECTOR SIAGIE Y EXCEL
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -812,8 +901,8 @@ export default function App() {
           const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
           row.forEach((colText, idx) => {
             const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (clean.includes('GRADO') && colGrado === -1) colGrado = idx;
-            if (clean.includes('SECCION') && colSeccion === -1) colSeccion = idx;
+            if (clean.includes('GRADO')) colGrado = idx;
+            if (clean.includes('SECCION')) colSeccion = idx;
           });
         }
       }
@@ -883,13 +972,15 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
+        localStorage.setItem('dh_estudiantes_v19', JSON.stringify(cargados));
+
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
           const { error } = await supabase.from('estudiantes').insert(cargados);
           if (error) alert('Aviso Supabase: ' + error.message);
-          else alert(`¡Éxito! Se cargaron ${cargados.length} estudiantes del SIAGIE en la nube.`);
+          else alert(`¡Éxito! Se cargaron ${cargados.length} estudiantes del SIAGIE.`);
         } catch (err) {
-          console.warn('Error al guardar en Supabase:', err);
+          console.warn('Estudiantes guardados en memoria del celular.');
         }
       } else {
         alert('No se detectaron estudiantes válidos. Verifique el archivo.');
@@ -917,7 +1008,7 @@ export default function App() {
 
   const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
-  // GESTIÓN PERSONAL (REGISTRO Y EDICIÓN)
+  // GESTIÓN PERSONAL
   const [nuevoRolPersonal, setNuevoRolPersonal] = useState('auxiliar');
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
@@ -925,7 +1016,7 @@ export default function App() {
   const [aulasSeleccionadasNuevas, setAulasSeleccionadasNuevas] = useState([]);
   const [mensajeAdmin, setMensajeAdmin] = useState('');
 
-  // MODAL DE EDICIÓN DE PERSONAL (DOCENTE O AUXILIAR)
+  // MODAL EDICIÓN PERSONAL
   const [personalEditando, setPersonalEditando] = useState(null);
   const [editNombrePersonal, setEditNombrePersonal] = useState('');
   const [editUserPersonal, setEditUserPersonal] = useState('');
@@ -995,9 +1086,10 @@ export default function App() {
     };
 
     setUsuarios(prev => prev.map(u => u.id === personalEditando.id ? personalActualizado : u));
+    localStorage.setItem('dh_usuarios_v19', JSON.stringify(usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u)));
 
     try {
-      const { error } = await supabase.from('usuarios').update({
+      await supabase.from('usuarios').update({
         nombre: personalActualizado.nombre,
         usuario: personalActualizado.usuario,
         clave: personalActualizado.clave,
@@ -1005,13 +1097,11 @@ export default function App() {
         aulas_asignadas: personalActualizado.aulasAsignadas
       }).eq('id', personalEditando.id);
 
-      if (error) alert('Aviso Supabase: ' + error.message);
-      else {
-        setMensajeAdmin('✅ Datos del personal actualizados en la nube.');
-        setTimeout(() => setMensajeAdmin(''), 3000);
-      }
+      setMensajeAdmin('✅ Datos del personal actualizados en la nube.');
+      setTimeout(() => setMensajeAdmin(''), 3000);
     } catch (err) {
-      console.warn('Error al actualizar en Supabase:', err);
+      setMensajeAdmin('✅ Guardado en memoria del celular.');
+      setTimeout(() => setMensajeAdmin(''), 3000);
     }
 
     setPersonalEditando(null);
@@ -1054,19 +1144,20 @@ export default function App() {
       phone: editTelefono.trim() || '999999999'
     };
 
-    setEstudiantes(prev => prev.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a));
+    const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
+    setEstudiantes(estudiantesActualizados);
+    localStorage.setItem('dh_estudiantes_v19', JSON.stringify(estudiantesActualizados));
 
     try {
-      const { error } = await supabase.from('estudiantes').update({
+      await supabase.from('estudiantes').update({
         dni: estudianteActualizado.dni,
         name: estudianteActualizado.name,
         grade: estudianteActualizado.grade,
         section: estudianteActualizado.section,
         phone: estudianteActualizado.phone
       }).eq('id', alumnoEditando.id);
-      if (error) alert('Aviso Supabase: ' + error.message);
     } catch (err) {
-      console.warn('Error al actualizar en Supabase:', err);
+      console.warn('Actualizado en memoria local.');
     }
 
     setAlumnoEditando(null);
@@ -1100,32 +1191,39 @@ export default function App() {
       aulasAsignadas: aulasAsignadas
     };
 
-    setUsuarios(prev => [...prev, nuevo]);
+    const nuevosUsuarios = [...usuarios, nuevo];
+    setUsuarios(nuevosUsuarios);
+    localStorage.setItem('dh_usuarios_v19', JSON.stringify(nuevosUsuarios));
+
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
     setNuevaClaveDocente('');
     setAulasSeleccionadasNuevas([]);
-    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : 'Auxiliar'} registrado con ${aulasAsignadas.length} aulas asignadas.`);
+    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : 'Auxiliar'} registrado con ${aulasAsignadas.length} aulas.`);
     setTimeout(() => setMensajeAdmin(''), 3500);
 
     try {
-      const { error } = await supabase.from('usuarios').upsert([{
-        id: nuevo.id,
-        usuario: nuevo.usuario,
-        clave: nuevo.clave,
-        rol: nuevo.rol,
-        nombre: nuevo.nombre,
-        aulas_asignadas: nuevo.aulasAsignadas
-      }]);
-      if (error) alert('Aviso Supabase: ' + error.message);
+      await conLimiteDeTiempo(
+        supabase.from('usuarios').upsert([{
+          id: nuevo.id,
+          usuario: nuevo.usuario,
+          clave: nuevo.clave,
+          rol: nuevo.rol,
+          nombre: nuevo.nombre,
+          aulas_asignadas: nuevo.aulasAsignadas
+        }]),
+        3000
+      );
     } catch (err) {
-      console.warn('Error al guardar usuario en Supabase:', err);
+      console.warn('Usuario registrado localmente.');
     }
   };
 
   const eliminarDocente = async (id) => {
     if (window.confirm('¿Está seguro de revocar el acceso a este usuario?')) {
-      setUsuarios(prev => prev.filter(u => u.id !== id));
+      const restantes = usuarios.filter(u => u.id !== id);
+      setUsuarios(restantes);
+      localStorage.setItem('dh_usuarios_v19', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -1145,7 +1243,10 @@ export default function App() {
       phone: nuevoCelularAlumno.trim() || '999999999'
     };
 
-    setEstudiantes(prev => [...prev, nuevo]);
+    const listaActualizada = [...estudiantes, nuevo];
+    setEstudiantes(listaActualizada);
+    localStorage.setItem('dh_estudiantes_v19', JSON.stringify(listaActualizada));
+
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
     setNuevoCelularAlumno('');
@@ -1153,14 +1254,15 @@ export default function App() {
     setTimeout(() => setMensajeAdmin(''), 3000);
 
     try {
-      const { error } = await supabase.from('estudiantes').insert([nuevo]);
-      if (error) alert('Aviso Supabase: ' + error.message);
+      await supabase.from('estudiantes').insert([nuevo]);
     } catch (err) {}
   };
 
   const retirarAlumno = async (id, nombre) => {
     if (window.confirm(`¿Confirmas el retiro definitivo del estudiante "${nombre}"?`)) {
-      setEstudiantes(prev => prev.filter(e => e.id !== id));
+      const restantes = estudiantes.filter(e => e.id !== id);
+      setEstudiantes(restantes);
+      localStorage.setItem('dh_estudiantes_v19', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1178,6 +1280,7 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
+  // PANTALLA DE CARGA
   if (cargandoInicial) {
     return (
       <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
@@ -1186,12 +1289,13 @@ export default function App() {
         </div>
         <h2 className="text-lg font-black tracking-tight">I.E.E. "Daniel Hernández"</h2>
         <p className="text-xs text-emerald-200 mt-1 flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" /> Conectando con la base de datos...
+          <Loader2 className="w-4 h-4 animate-spin" /> Verificando base de datos...
         </p>
       </div>
     );
   }
 
+  // PRIMER REGISTRO
   if (!existeDirector) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1271,7 +1375,7 @@ export default function App() {
               className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3.5 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 transition mt-2"
             >
               {guardandoDirector ? <Loader2 className="w-5 h-5 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-              <span>{guardandoDirector ? 'Guardando en la Nube...' : 'Activar Sistema y Crear Director'}</span>
+              <span>{guardandoDirector ? 'Guardando...' : 'Activar Sistema y Crear Director'}</span>
             </button>
           </form>
         </div>
@@ -1279,6 +1383,7 @@ export default function App() {
     );
   }
 
+  // PANTALLA LOGIN
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1419,10 +1524,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
-      {!estaEnLinea && (
-        <div className="bg-amber-500 text-amber-950 px-3 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 shadow-sm sticky top-0 z-40">
-          <WifiOff className="w-4 h-4 shrink-0" />
-          <span className="truncate">MODO OFFLINE: Se guarda en tu celular</span>
+      
+      {/* BARRA DE ASISTENCIAS GUARDADAS EN EL CELULAR SIN SUBIR */}
+      {colaPendientes.length > 0 && (
+        <div className="bg-amber-600 text-white px-3 py-2 text-xs font-black flex items-center justify-between shadow sticky top-0 z-50 animate-pulse">
+          <div className="flex items-center gap-1.5 truncate">
+            <Smartphone className="w-4 h-4 text-amber-200 shrink-0" />
+            <span className="truncate">📱 Tienes {colaPendientes.length} aula(s) guardadas en el celular</span>
+          </div>
+          <button
+            onClick={sincronizarColaConSupabase}
+            disabled={sincronizando}
+            className="bg-white text-amber-900 px-2.5 py-1 rounded-lg text-xs font-black shrink-0 shadow flex items-center gap-1 active:scale-95 transition"
+          >
+            {sincronizando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5 text-amber-700" />}
+            <span>{sincronizando ? 'Subiendo...' : 'Subir Ahora ☁️'}</span>
+          </button>
         </div>
       )}
 
@@ -1430,22 +1547,6 @@ export default function App() {
         <div className="bg-emerald-600 text-white px-3 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 shadow-sm sticky top-0 z-40">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span className="truncate">{avisoSync}</span>
-        </div>
-      )}
-
-      {colaPendientes.length > 0 && estaEnLinea && (
-        <div className="bg-blue-600 text-white px-3 py-2 text-xs font-bold flex items-center justify-between shadow-sm sticky top-0 z-40">
-          <div className="flex items-center gap-1.5 truncate">
-            <Wifi className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-            <span className="truncate">{colaPendientes.length} guardado(s) por subir</span>
-          </div>
-          <button
-            onClick={sincronizarColaConSupabase}
-            disabled={sincronizando}
-            className="bg-white text-blue-800 px-2.5 py-1 rounded-lg text-xs font-black shrink-0 shadow"
-          >
-            {sincronizando ? 'Subiendo...' : 'Subir Ahora'}
-          </button>
         </div>
       )}
 
@@ -1812,7 +1913,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ALERTA DE EVASIONES */}
+                {/* ALERTA DE EVASIÓN */}
                 {metricasDirector.evadieronHoyLista.length > 0 && (
                   <div className="bg-purple-900 text-white p-4 rounded-2xl shadow-lg border border-purple-700 animate-fadeIn">
                     <div className="flex items-center justify-between mb-2">
@@ -2064,7 +2165,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ALERTAS DISCIPLINARIAS */}
+                {/* ALERTAS */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
@@ -2386,7 +2487,7 @@ export default function App() {
               </div>
             )}
 
-            {/* GESTIÓN DE PERSONAL Y AULAS */}
+            {/* GESTIÓN PERSONAL */}
             {pestanaDirector === 'docentes' && (
               <div className="space-y-3.5">
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
@@ -2508,7 +2609,7 @@ export default function App() {
                       type="submit"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
                     >
-                      <UserPlus className="w-4 h-4" /> Crear Cuenta y Guardar en la Nube
+                      <UserPlus className="w-4 h-4" /> Crear Cuenta y Guardar
                     </button>
                   </form>
                 </div>
@@ -2541,11 +2642,10 @@ export default function App() {
                         </div>
 
                         <div className="flex items-center gap-1 shrink-0">
-                          {/* BOTÓN EDITAR DOCENTE O AUXILIAR */}
                           <button
                             onClick={() => abrirModalEditarPersonal(usr)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
-                            title="Editar contraseña, usuario o salones asignados"
+                            title="Editar contraseña, usuario o salones"
                           >
                             <Edit3 className="w-3.5 h-3.5" /> Editar
                           </button>
@@ -2563,14 +2663,14 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* MODAL PARA EDITAR DOCENTE O AUXILIAR */}
+                {/* MODAL EDITAR PERSONAL */}
                 {personalEditando && (
                   <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
                     <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[90vh] overflow-y-auto">
                       <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
                         <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
                           <UserCog className="w-4 h-4" />
-                          <h4>Editar Credenciales y Aulas del Personal</h4>
+                          <h4>Editar Credenciales y Aulas</h4>
                         </div>
                         <button onClick={() => setPersonalEditando(null)} className="text-slate-400 hover:text-slate-600 p-1">
                           <X className="w-5 h-5" />
