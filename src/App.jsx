@@ -7,7 +7,7 @@ import {
   HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck, BookOpen,
   Upload, Edit3, Plus, Layers, Wifi, WifiOff, RefreshCw, Smartphone,
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
-  Loader2
+  Loader2, Footprints, FileText, UserCog
 } from 'lucide-react';
 
 // Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
@@ -66,18 +66,18 @@ export default function App() {
   // RED Y COLA OFFLINE
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
-    const local = localStorage.getItem('colegio_cola_offline_v16');
+    const local = localStorage.getItem('colegio_cola_offline_v18');
     return local ? JSON.parse(local) : [];
   });
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('colegio_cola_offline_v16', JSON.stringify(colaPendientes));
+    localStorage.setItem('colegio_cola_offline_v18', JSON.stringify(colaPendientes));
   }, [colaPendientes]);
 
   const sincronizarColaConSupabase = useCallback(async () => {
-    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v16') || '[]');
+    const colaActual = JSON.parse(localStorage.getItem('colegio_cola_offline_v18') || '[]');
     if (!navigator.onLine || colaActual.length === 0) return;
 
     setSincronizando(true);
@@ -102,7 +102,7 @@ export default function App() {
     }
 
     setColaPendientes(restantes);
-    localStorage.setItem('colegio_cola_offline_v16', JSON.stringify(restantes));
+    localStorage.setItem('colegio_cola_offline_v18', JSON.stringify(restantes));
     setSincronizando(false);
 
     if (enviadosConExito > 0) {
@@ -131,32 +131,32 @@ export default function App() {
 
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
-    const local = localStorage.getItem('colegio_usuarios_v16');
+    const local = localStorage.getItem('colegio_usuarios_v18');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_usuarios_v16', JSON.stringify(usuarios));
+    localStorage.setItem('colegio_usuarios_v18', JSON.stringify(usuarios));
   }, [usuarios]);
 
   // PADRÓN DE ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
-    const local = localStorage.getItem('colegio_estudiantes_v16');
+    const local = localStorage.getItem('colegio_estudiantes_v18');
     return local ? JSON.parse(local) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_estudiantes_v16', JSON.stringify(estudiantes));
+    localStorage.setItem('colegio_estudiantes_v18', JSON.stringify(estudiantes));
   }, [estudiantes]);
 
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
-    const local = localStorage.getItem('colegio_asistencias_v16');
+    const local = localStorage.getItem('colegio_asistencias_v18');
     return local ? JSON.parse(local) : {};
   });
 
   useEffect(() => {
-    localStorage.setItem('colegio_asistencias_v16', JSON.stringify(asistencias));
+    localStorage.setItem('colegio_asistencias_v18', JSON.stringify(asistencias));
   }, [asistencias]);
 
   // DESCARGA INICIAL DESDE SUPABASE
@@ -179,13 +179,13 @@ export default function App() {
             aulasAsignadas: u.aulas_asignadas || []
           }));
           setUsuarios(formateados);
-          localStorage.setItem('colegio_usuarios_v16', JSON.stringify(formateados));
+          localStorage.setItem('colegio_usuarios_v18', JSON.stringify(formateados));
         }
 
         const resEst = await supabase.from('estudiantes').select('*');
         if (!resEst.error && resEst.data && resEst.data.length > 0) {
           setEstudiantes(resEst.data);
-          localStorage.setItem('colegio_estudiantes_v16', JSON.stringify(resEst.data));
+          localStorage.setItem('colegio_estudiantes_v18', JSON.stringify(resEst.data));
         }
 
         const resAsis = await supabase.from('asistencias').select('*');
@@ -199,7 +199,7 @@ export default function App() {
             };
           });
           setAsistencias(prev => ({ ...prev, ...agrupadas }));
-          localStorage.setItem('colegio_asistencias_v16', JSON.stringify(agrupadas));
+          localStorage.setItem('colegio_asistencias_v18', JSON.stringify(agrupadas));
         }
       } catch (err) {
         console.warn('Conexión con Supabase:', err);
@@ -215,7 +215,7 @@ export default function App() {
     return usuarios.some(u => u.rol === 'director');
   }, [usuarios]);
 
-  // REGISTRO INICIAL DIRECTOR
+  // REGISTRO INICIAL DEL DIRECTOR
   const [primerNombreDirector, setPrimerNombreDirector] = useState('');
   const [primerUserDirector, setPrimerUserDirector] = useState('');
   const [primerClaveDirector, setPrimerClaveDirector] = useState('');
@@ -260,8 +260,8 @@ export default function App() {
 
       setUsuarios([directorNuevo]);
       setUsuarioAutenticado(directorNuevo);
-      localStorage.setItem('colegio_usuarios_v16', JSON.stringify([directorNuevo]));
-      localStorage.setItem('colegio_sesion_v16', JSON.stringify(directorNuevo));
+      localStorage.setItem('colegio_usuarios_v18', JSON.stringify([directorNuevo]));
+      localStorage.setItem('colegio_sesion_v18', JSON.stringify(directorNuevo));
     } catch (err) {
       alert('Error al registrar: ' + err.message);
     } finally {
@@ -271,7 +271,7 @@ export default function App() {
 
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
-    const sesion = localStorage.getItem('colegio_sesion_v16');
+    const sesion = localStorage.getItem('colegio_sesion_v18');
     return sesion ? JSON.parse(sesion) : null;
   });
 
@@ -295,7 +295,7 @@ export default function App() {
       setUsuarioAutenticado(encontrado);
       setRolActivo(encontrado.rol);
       if (recordarSesion) {
-        localStorage.setItem('colegio_sesion_v16', JSON.stringify(encontrado));
+        localStorage.setItem('colegio_sesion_v18', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -307,12 +307,12 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('colegio_sesion_v16');
+      localStorage.removeItem('colegio_sesion_v18');
     }
   };
 
   const restablecerSistemaDeFabrica = async () => {
-    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero.\n\nEscriba "LIMPIAR" para confirmar:');
+    const claveSeguridad = window.prompt('ATENCIÓN: Esto restablecerá el sistema a cero tanto en este dispositivo como en la nube.\n\nEscriba "LIMPIAR" para confirmar:');
     if (claveSeguridad === 'LIMPIAR') {
       try {
         await supabase.from('usuarios').delete().neq('id', 'cero');
@@ -377,10 +377,15 @@ export default function App() {
     setAsistenciaAula(inicial);
   }, [alumnosAula, fechaHoy, asistencias]);
 
+  // ROTACIÓN CON EVASIÓN Y PERMISO JUSTIFICADO: P -> T -> F -> E -> J -> P
   const alternarEstadoAlumno = (id) => {
     setAsistenciaAula(prev => {
       const actual = prev[id] || 'P';
-      const siguiente = actual === 'P' ? 'T' : actual === 'T' ? 'F' : 'P';
+      const siguiente = 
+        actual === 'P' ? 'T' :
+        actual === 'T' ? 'F' :
+        actual === 'F' ? 'E' :
+        actual === 'E' ? 'J' : 'P';
       return { ...prev, [id]: siguiente };
     });
   };
@@ -403,7 +408,7 @@ export default function App() {
       estudiante_nombre: alumno.name,
       seccion: seccionCompleta,
       estado: asistenciaAula[alumno.id] || 'P',
-      registrado_por: usuarioAutenticado?.nombre || 'Docente'
+      registrado_por: usuarioAutenticado?.nombre || 'Docente/Auxiliar'
     }));
 
     const paquete = {
@@ -438,7 +443,6 @@ export default function App() {
     }
   };
 
-  // CONTROL DE PUERTA (AUXILIAR CON SECCIONES A CARGO)
   const [busquedaAux, setBusquedaAux] = useState('');
   const [mensajePuerta, setMensajePuerta] = useState('');
 
@@ -517,34 +521,44 @@ export default function App() {
     }
   };
 
-  // MÉTRICAS
+  // MÉTRICAS Y DETECCIÓN
   const metricasDirector = useMemo(() => {
     const dia = asistencias[fechaHoy] || {};
     let faltasHoy = 0;
     let tardanzasHoy = 0;
     let presentesHoy = 0;
+    let evasionesHoy = 0;
+    let permisosHoy = 0;
 
     estudiantes.forEach(e => {
       const st = dia[e.id]?.status || 'P';
       if (st === 'F') faltasHoy++;
       else if (st === 'T') tardanzasHoy++;
+      else if (st === 'E') evasionesHoy++;
+      else if (st === 'J') permisosHoy++;
       else presentesHoy++;
     });
 
     const acumulados = estudiantes.map(e => {
       let tCount = 0;
       let fCount = 0;
+      let eCount = 0;
+      let jCount = 0;
       Object.values(asistencias).forEach(diaReg => {
         if (diaReg[e.id]?.status === 'T') tCount++;
         if (diaReg[e.id]?.status === 'F') fCount++;
+        if (diaReg[e.id]?.status === 'E') eCount++;
+        if (diaReg[e.id]?.status === 'J') jCount++;
       });
-      return { ...e, tardanzasMes: tCount, faltasMes: fCount };
+      return { ...e, tardanzasMes: tCount, faltasMes: fCount, evasionesMes: eCount, permisosMes: jCount };
     });
 
-    const enRiesgo = acumulados.filter(e => e.tardanzasMes >= 3 || e.faltasMes >= 3);
+    const enRiesgo = acumulados.filter(e => e.tardanzasMes >= 3 || e.faltasMes >= 3 || e.evasionesMes >= 1);
     const faltaronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'F');
+    const evadieronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'E');
+    const permisoHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'J');
 
-    return { faltasHoy, tardanzasHoy, presentesHoy, enRiesgo, faltaronHoyLista, acumulados };
+    return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, enRiesgo, faltaronHoyLista, evadieronHoyLista, permisoHoyLista, acumulados };
   }, [asistencias, estudiantes, fechaHoy]);
 
   // REPORTES EXCEL
@@ -631,11 +645,15 @@ export default function App() {
         listaExportar.forEach((alumno, i) => {
           const st = diaActual[alumno.id]?.status || 'P';
           const hora = diaActual[alumno.id]?.time || '--:--';
-          const estadoDesc = st === 'P' ? 'PRESENTE' : st === 'T' ? 'TARDANZA' : 'FALTA';
+          const estadoDesc = 
+            st === 'P' ? 'PRESENTE' : 
+            st === 'T' ? 'TARDANZA' : 
+            st === 'F' ? 'FALTA' : 
+            st === 'E' ? 'EVASIÓN' : 'PERMISO (J)';
           datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, estadoDesc, hora, alumno.phone || '']);
         });
 
-        anchosCols = [{ wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
+        anchosCols = [{ wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 16 }, { wch: 15 }, { wch: 18 }];
 
       } else if (tipoPeriodoReporte === 'semana') {
         const diasSemana = obtenerDiasSemana(fechaHoy);
@@ -650,11 +668,11 @@ export default function App() {
 
         const filaEncabezados = ['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN'];
         diasSemana.forEach((d, idx) => filaEncabezados.push(`${nombresDias[idx]} (${d.slice(5)})`));
-        filaEncabezados.push('TOTAL P', 'TOTAL T', 'TOTAL F', '% ASISTENCIA', 'CELULAR');
+        filaEncabezados.push('TOTAL P', 'TOTAL T', 'TOTAL F', 'EVASIONES', 'PERMISOS (J)', '% ASISTENCIA', 'CELULAR');
         datos.push(filaEncabezados);
 
         listaExportar.forEach((alumno, i) => {
-          let countP = 0, countT = 0, countF = 0;
+          let countP = 0, countT = 0, countF = 0, countE = 0, countJ = 0;
           const filaAlumno = [i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section];
 
           diasSemana.forEach(d => {
@@ -663,18 +681,20 @@ export default function App() {
             if (estado === 'P') countP++;
             else if (estado === 'T') countT++;
             else if (estado === 'F') countF++;
+            else if (estado === 'E') countE++;
+            else if (estado === 'J') countJ++;
           });
 
-          const totalRegistrados = countP + countT + countF;
-          const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT) / totalRegistrados) * 100) : 100;
-          filaAlumno.push(countP, countT, countF, `${porcentaje}%`, alumno.phone || '');
+          const totalRegistrados = countP + countT + countF + countE + countJ;
+          const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT + countJ) / totalRegistrados) * 100) : 100;
+          filaAlumno.push(countP, countT, countF, countE, countJ, `${porcentaje}%`, alumno.phone || '');
           datos.push(filaAlumno);
         });
 
         anchosCols = [
           { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 22 },
           { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 },
-          { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 16 }
+          { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 15 }, { wch: 16 }
         ];
 
       } else if (tipoPeriodoReporte === 'mes') {
@@ -689,27 +709,29 @@ export default function App() {
         datos.push(['Alcance:', tituloAlcance]);
         datos.push([]);
 
-        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'PUNTUALES (P)', 'TARDANZAS (T)', 'FALTAS (F)', 'TOTAL CLASES', '% ASISTENCIA', 'CONDICIÓN', 'CELULAR APODERADO']);
+        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'PUNTUALES (P)', 'TARDANZAS (T)', 'FALTAS (F)', 'EVASIONES (E)', 'PERMISOS (J)', 'TOTAL REGISTROS', '% ASISTENCIA', 'CONDICIÓN', 'CELULAR APODERADO']);
 
         listaExportar.forEach((alumno, i) => {
-          let countP = 0, countT = 0, countF = 0;
+          let countP = 0, countT = 0, countF = 0, countE = 0, countJ = 0;
           diasHabilesMes.forEach(d => {
             const st = asistencias[d]?.[alumno.id]?.status;
             if (st === 'P') countP++;
             else if (st === 'T') countT++;
             else if (st === 'F') countF++;
+            else if (st === 'E') countE++;
+            else if (st === 'J') countJ++;
           });
 
-          const totalRegistrados = countP + countT + countF;
-          const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT) / totalRegistrados) * 100) : 100;
-          const condicion = (countT >= 3 || countF >= 3) ? 'EN RIESGO DISCIPLINARIO' : 'REGULAR';
+          const totalRegistrados = countP + countT + countF + countE + countJ;
+          const porcentaje = totalRegistrados > 0 ? Math.round(((countP + countT + countJ) / totalRegistrados) * 100) : 100;
+          const condicion = (countE >= 1 || countT >= 3 || countF >= 3) ? 'EN RIESGO DISCIPLINARIO' : 'REGULAR';
 
-          datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, countP, countT, countF, totalRegistrados, `${porcentaje}%`, condicion, alumno.phone || '']);
+          datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, countP, countT, countF, countE, countJ, totalRegistrados, `${porcentaje}%`, condicion, alumno.phone || '']);
         });
 
         anchosCols = [
           { wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 22 },
-          { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 15 },
+          { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 15 },
           { wch: 26 }, { wch: 18 }
         ];
       }
@@ -742,9 +764,7 @@ export default function App() {
     }
   };
 
-  // =========================================================================
-  // CARGA INTELIGENTE ADAPTADA A SIAGIE Y FORMATOS EXCEL ESTÁNDAR
-  // =========================================================================
+  // LECTOR INTEGRADO DE ARCHIVOS SIAGIE Y EXCEL ESTÁNDAR
   const procesarArchivoExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -767,7 +787,6 @@ export default function App() {
       let colDni = -1, colApePat = -1, colApeMat = -1, colNombres = -1, colNombreUnico = -1;
       let colGrado = -1, colSeccion = -1, colTelefono = -1;
 
-      // Escanear los primeros 20 renglones
       for (let r = 0; r < Math.min(filas.length, 20); r++) {
         const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
         row.forEach((colText, idx) => {
@@ -788,7 +807,6 @@ export default function App() {
         if (isSiagie && colApePat !== -1 && colNombres !== -1) break;
       }
 
-      // Si es formato SIAGIE pero grado y sección estaban en renglones anteriores (fila 10)
       if (isSiagie && (colGrado === -1 || colSeccion === -1)) {
         for (let r = 0; r < filaEncabezados; r++) {
           const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
@@ -800,7 +818,6 @@ export default function App() {
         }
       }
 
-      // Mapeo canónico a las 30 secciones oficiales de la I.E.E. Daniel Hernández
       const mapaSeccionesSIAGIE = {
         'RESPONSABILIDD': 'RESPONSABILIDAD',
         'DANIEL ALCIDES CARRION': 'D. A. CARRIÓN',
@@ -885,10 +902,14 @@ export default function App() {
 
   const enviarWhatsApp = (alumno, tipoAlerta) => {
     let mensaje = '';
-    if (tipoAlerta === 'falta_hoy') {
+    if (tipoAlerta === 'evasion') {
+      mensaje = `ALERTA URGENTE DE EVASIÓN: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}): La Dirección y Auxiliaría de la I.E.E. Daniel Hernández le informan con carácter de urgencia que el menor ingresó a la institución pero ha EVADIDO clases / se encuentra no habido en este momento. Rogamos comunicarse inmediatamente con el colegio.`;
+    } else if (tipoAlerta === 'permiso') {
+      mensaje = `CONSTANCIA DE PERMISO: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}). Se deja constancia de que el estudiante cuenta con permiso justificado / papeleta de salida autorizada el día de hoy ${fechaHoy}.`;
+    } else if (tipoAlerta === 'falta_hoy') {
       mensaje = `Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}): Le saluda la I.E.E. Daniel Hernández. Le informamos que el día de hoy ${fechaHoy} el estudiante no se ha presentado al colegio. Por favor comunicarse para justificar su inasistencia. Gracias.`;
     } else {
-      mensaje = `CITACIÓN: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}). La I.E.E. Daniel Hernández le notifica que su menor hijo(a) registra a la fecha *${alumno.tardanzasMes} tardanzas* y *${alumno.faltasMes} faltas* en el mes. Solicitamos su presencia en la Dirección para coordinar su situación disciplinaria.`;
+      mensaje = `CITACIÓN FORMAL: Estimado(a) apoderado de *${alumno.name}* (${alumno.grade} - ${alumno.section}). La I.E.E. Daniel Hernández le notifica que su menor hijo(a) registra a la fecha incidencias disciplinarias acumuladas en el mes. Solicitamos su presencia en la Dirección para coordinar su situación escolar.`;
     }
     const url = `https://wa.me/51${alumno.phone}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
@@ -896,13 +917,30 @@ export default function App() {
 
   const [pestanaDirector, setPestanaDirector] = useState('metricas');
   
-  // GESTIÓN PERSONAL
+  // GESTIÓN PERSONAL (REGISTRO Y EDICIÓN)
   const [nuevoRolPersonal, setNuevoRolPersonal] = useState('auxiliar');
   const [nuevoNombreDocente, setNuevoNombreDocente] = useState('');
   const [nuevoUserDocente, setNuevoUserDocente] = useState('');
   const [nuevaClaveDocente, setNuevaClaveDocente] = useState('');
   const [aulasSeleccionadasNuevas, setAulasSeleccionadasNuevas] = useState([]);
   const [mensajeAdmin, setMensajeAdmin] = useState('');
+
+  // MODAL DE EDICIÓN DE PERSONAL (DOCENTE O AUXILIAR)
+  const [personalEditando, setPersonalEditando] = useState(null);
+  const [editNombrePersonal, setEditNombrePersonal] = useState('');
+  const [editUserPersonal, setEditUserPersonal] = useState('');
+  const [editClavePersonal, setEditClavePersonal] = useState('');
+  const [editRolPersonal, setEditRolPersonal] = useState('docente');
+  const [editAulasPersonal, setEditAulasPersonal] = useState([]);
+
+  const abrirModalEditarPersonal = (p) => {
+    setPersonalEditando(p);
+    setEditNombrePersonal(p.nombre);
+    setEditUserPersonal(p.usuario);
+    setEditClavePersonal(p.clave);
+    setEditRolPersonal(p.rol);
+    setEditAulasPersonal((p.aulasAsignadas || []).map(a => `${a.grade}|${a.section}`));
+  };
 
   const alternarSeleccionAula = (claveAula) => {
     setAulasSeleccionadasNuevas(prev => 
@@ -919,6 +957,64 @@ export default function App() {
     } else {
       setAulasSeleccionadasNuevas(prev => Array.from(new Set([...prev, ...aulasDelGrado])));
     }
+  };
+
+  const alternarSeleccionAulaEdicion = (claveAula) => {
+    setEditAulasPersonal(prev => 
+      prev.includes(claveAula) ? prev.filter(c => c !== claveAula) : [...prev, claveAula]
+    );
+  };
+
+  const alternarGradoCompletoEdicion = (gradoNombre) => {
+    const aulasDelGrado = todasLasAulasColegio.filter(a => a.grade === gradoNombre).map(a => `${a.grade}|${a.section}`);
+    const todasMarcadas = aulasDelGrado.every(c => editAulasPersonal.includes(c));
+
+    if (todasMarcadas) {
+      setEditAulasPersonal(prev => prev.filter(c => !aulasDelGrado.includes(c)));
+    } else {
+      setEditAulasPersonal(prev => Array.from(new Set([...prev, ...aulasDelGrado])));
+    }
+  };
+
+  const guardarEdicionPersonal = async (e) => {
+    e.preventDefault();
+    if (!personalEditando) return;
+
+    const aulasFormateadas = editAulasPersonal.map(clave => {
+      const [grade, section] = clave.split('|');
+      return { grade, section };
+    });
+
+    const personalActualizado = {
+      ...personalEditando,
+      nombre: editNombrePersonal.trim(),
+      usuario: editUserPersonal.trim().toLowerCase(),
+      clave: editClavePersonal.trim(),
+      rol: editRolPersonal,
+      aulasAsignadas: aulasFormateadas
+    };
+
+    setUsuarios(prev => prev.map(u => u.id === personalEditando.id ? personalActualizado : u));
+
+    try {
+      const { error } = await supabase.from('usuarios').update({
+        nombre: personalActualizado.nombre,
+        usuario: personalActualizado.usuario,
+        clave: personalActualizado.clave,
+        rol: personalActualizado.rol,
+        aulas_asignadas: personalActualizado.aulasAsignadas
+      }).eq('id', personalEditando.id);
+
+      if (error) alert('Aviso Supabase: ' + error.message);
+      else {
+        setMensajeAdmin('✅ Datos del personal actualizados en la nube.');
+        setTimeout(() => setMensajeAdmin(''), 3000);
+      }
+    } catch (err) {
+      console.warn('Error al actualizar en Supabase:', err);
+    }
+
+    setPersonalEditando(null);
   };
 
   const [busquedaDirector, setBusquedaDirector] = useState('');
@@ -1082,7 +1178,6 @@ export default function App() {
     );
   }, [estudiantes, busquedaDirector]);
 
-  // VISTAS
   if (cargandoInicial) {
     return (
       <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
@@ -1477,11 +1572,17 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-800 flex items-center gap-1.5 flex-1">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs text-emerald-800 flex items-center gap-1.5 flex-1 overflow-x-auto">
                     <span>Estado:</span>
                     <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">P</span>
                     <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-bold text-[11px]">T</span>
                     <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-bold text-[11px]">F</span>
+                    <span className="bg-purple-700 text-white px-2 py-0.5 rounded font-bold text-[11px] flex items-center gap-0.5">
+                      <Footprints className="w-3 h-3" /> E
+                    </span>
+                    <span className="bg-sky-600 text-white px-2 py-0.5 rounded font-bold text-[11px] flex items-center gap-0.5">
+                      <FileText className="w-3 h-3" /> J (Permiso)
+                    </span>
                   </div>
 
                   <button
@@ -1516,7 +1617,11 @@ export default function App() {
                               ? 'bg-emerald-50/80 border-emerald-300' 
                               : estado === 'T' 
                                 ? 'bg-amber-50/80 border-amber-400' 
-                                : 'bg-rose-50/80 border-rose-400'
+                                : estado === 'F'
+                                  ? 'bg-rose-50/80 border-rose-400'
+                                  : estado === 'E'
+                                    ? 'bg-purple-50/90 border-purple-400 shadow-purple-100'
+                                    : 'bg-sky-50/90 border-sky-400 shadow-sky-100'
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -1529,7 +1634,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="shrink-0">
+                          <div className="shrink-0 flex items-center gap-1.5">
                             {estado === 'P' && (
                               <div className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> P
@@ -1543,6 +1648,16 @@ export default function App() {
                             {estado === 'F' && (
                               <div className="flex items-center gap-1 bg-rose-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
                                 <XCircle className="w-3.5 h-3.5" /> F
+                              </div>
+                            )}
+                            {estado === 'E' && (
+                              <div className="flex items-center gap-1 bg-purple-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm animate-pulse">
+                                <Footprints className="w-3.5 h-3.5" /> Evasión
+                              </div>
+                            )}
+                            {estado === 'J' && (
+                              <div className="flex items-center gap-1 bg-sky-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
+                                <FileText className="w-3.5 h-3.5" /> Permiso (J)
                               </div>
                             )}
                           </div>
@@ -1577,7 +1692,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PUERTA (AUXILIAR CON SECCIONES A CARGO) */}
+        {/* PUERTA */}
         {rolActivo === 'auxiliar' && (
           <div className="space-y-3.5">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -1637,7 +1752,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PANEL DIRECTOR */}
+        {/* DIRECTOR */}
         {rolActivo === 'director' && (
           <div className="space-y-3.5">
             <div className="flex bg-slate-200 p-1 rounded-xl">
@@ -1670,22 +1785,78 @@ export default function App() {
             {/* REPORTES */}
             {pestanaDirector === 'metricas' && (
               <>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Presentes</p>
-                    <p className="text-xl font-black text-emerald-600">{metricasDirector.presentesHoy}</p>
+                <div className="grid grid-cols-5 gap-1 sm:gap-2">
+                  <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Presentes</p>
+                    <p className="text-base sm:text-xl font-black text-emerald-600">{metricasDirector.presentesHoy}</p>
                   </div>
 
-                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Tardanzas</p>
-                    <p className="text-xl font-black text-amber-500">{metricasDirector.tardanzasHoy}</p>
+                  <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Tardanzas</p>
+                    <p className="text-base sm:text-xl font-black text-amber-500">{metricasDirector.tardanzasHoy}</p>
                   </div>
 
-                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Faltas</p>
-                    <p className="text-xl font-black text-rose-600">{metricasDirector.faltasHoy}</p>
+                  <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Faltas</p>
+                    <p className="text-base sm:text-xl font-black text-rose-600">{metricasDirector.faltasHoy}</p>
+                  </div>
+
+                  <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-purple-300 shadow-sm text-center">
+                    <p className="text-[8px] sm:text-[9px] font-bold text-purple-600 uppercase">Evasión</p>
+                    <p className="text-base sm:text-xl font-black text-purple-700">{metricasDirector.evasionesHoy}</p>
+                  </div>
+
+                  <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-sky-300 shadow-sm text-center">
+                    <p className="text-[8px] sm:text-[9px] font-bold text-sky-600 uppercase">Permisos</p>
+                    <p className="text-base sm:text-xl font-black text-sky-700">{metricasDirector.permisosHoy}</p>
                   </div>
                 </div>
+
+                {/* ALERTA DE EVASIONES */}
+                {metricasDirector.evadieronHoyLista.length > 0 && (
+                  <div className="bg-purple-900 text-white p-4 rounded-2xl shadow-lg border border-purple-700 animate-fadeIn">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Footprints className="w-5 h-5 text-purple-300 animate-bounce" />
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wide">
+                          🚨 Alerta de Evasión Hoy ({metricasDirector.evadieronHoyLista.length} alumnos)
+                        </h3>
+                      </div>
+                      <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                        Acción Inmediata
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-purple-200 mb-3 leading-relaxed">
+                      Estudiantes registrados como presentes que evadieron clases o se retiraron del aula sin autorización:
+                    </p>
+
+                    <div className="space-y-2">
+                      {metricasDirector.evadieronHoyLista.map(alumno => (
+                        <div key={alumno.id} className="bg-purple-800/90 p-2.5 rounded-xl border border-purple-600 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-bold text-white text-xs truncate">{alumno.name}</p>
+                            <p className="text-[10px] text-purple-300 truncate">{alumno.grade} - {alumno.section}</p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a 
+                              href={`tel:${alumno.phone}`} 
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                            <button 
+                              onClick={() => enviarWhatsApp(alumno, 'evasion')}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" /> Avisar Evasión
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-300">
                   <div className="flex items-center gap-2 text-emerald-900 font-bold mb-3">
@@ -1823,6 +1994,7 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* AUSENTES */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
@@ -1862,11 +2034,42 @@ export default function App() {
                   )}
                 </div>
 
+                {/* PERMISOS HOY */}
+                {metricasDirector.permisoHoyLista.length > 0 && (
+                  <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-sky-300">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-1.5 text-sky-800">
+                        <FileText className="w-4 h-4 text-sky-600" />
+                        <h3 className="font-bold text-xs sm:text-sm">Con Permiso Justificado Hoy ({metricasDirector.permisoHoyLista.length})</h3>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {metricasDirector.permisoHoyLista.map(alumno => (
+                        <div key={alumno.id} className="bg-sky-50/70 p-2.5 rounded-xl border border-sky-200 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
+                            <p className="text-[10px] text-sky-700 truncate">{alumno.grade} - {alumno.section}</p>
+                          </div>
+
+                          <button 
+                            onClick={() => enviarWhatsApp(alumno, 'permiso')}
+                            className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" /> Constancia
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ALERTAS DISCIPLINARIAS */}
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4 text-amber-500" />
-                      <h3 className="font-bold text-slate-800 text-xs sm:text-sm">Alertas (3+ Tardanzas/Faltas)</h3>
+                      <h3 className="font-bold text-slate-800 text-xs sm:text-sm">Alertas (Evasiones o 3+ Tardanzas/Faltas)</h3>
                     </div>
                     <span className="bg-rose-100 text-rose-700 font-black text-[10px] px-2 py-0.5 rounded-full">
                       {metricasDirector.enRiesgo.length} en riesgo
@@ -1882,13 +2085,23 @@ export default function App() {
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-xs truncate">{alumno.name}</p>
                             <p className="text-[10px] text-slate-600 truncate">{alumno.grade} - {alumno.section}</p>
-                            <div className="flex gap-1.5 mt-0.5">
+                            <div className="flex flex-wrap gap-1.5 mt-0.5">
+                              {alumno.evasionesMes > 0 && (
+                                <span className="text-[9px] font-black text-white bg-purple-700 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                                  <Footprints className="w-2.5 h-2.5" /> {alumno.evasionesMes} Evasión(es)
+                                </span>
+                              )}
                               <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.2 rounded">
-                                {alumno.tardanzasMes} T
+                                {alumno.tardanzasMes} Tardanzas
                               </span>
                               <span className="text-[9px] font-bold text-rose-800 bg-rose-200/80 px-1.5 py-0.2 rounded">
-                                {alumno.faltasMes} F
+                                {alumno.faltasMes} Faltas
                               </span>
+                              {alumno.permisosMes > 0 && (
+                                <span className="text-[9px] font-bold text-sky-800 bg-sky-100 px-1.5 py-0.2 rounded">
+                                  {alumno.permisosMes} Permiso(s)
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -1906,7 +2119,7 @@ export default function App() {
               </>
             )}
 
-            {/* PADRÓN DE ESTUDIANTES */}
+            {/* PADRÓN */}
             {pestanaDirector === 'alumnos' && (
               <div className="space-y-3.5">
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
@@ -2215,7 +2428,7 @@ export default function App() {
 
                     <input
                       type="text"
-                      placeholder={nuevoRolPersonal === 'auxiliar' ? "Nombre completo del Auxiliar (ej: Ronald Alarcón)" : "Nombre del Docente y Área (ej: Ana Yance - COM)"}
+                      placeholder={nuevoRolPersonal === 'auxiliar' ? "Nombre del Auxiliar (ej: Ronald Alarcón)" : "Nombre del Docente y Área (ej: Ana Yance - COM)"}
                       value={nuevoNombreDocente}
                       onChange={(e) => setNuevoNombreDocente(e.target.value)}
                       required
@@ -2327,17 +2540,168 @@ export default function App() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => eliminarDocente(usr.id)}
-                          className="text-rose-600 hover:bg-rose-50 p-2 rounded-lg shrink-0"
-                          title="Revocar acceso"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* BOTÓN EDITAR DOCENTE O AUXILIAR */}
+                          <button
+                            onClick={() => abrirModalEditarPersonal(usr)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
+                            title="Editar contraseña, usuario o salones asignados"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" /> Editar
+                          </button>
+
+                          <button
+                            onClick={() => eliminarDocente(usr.id)}
+                            className="text-rose-600 hover:bg-rose-50 p-2 rounded-xl transition"
+                            title="Revocar acceso"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* MODAL PARA EDITAR DOCENTE O AUXILIAR */}
+                {personalEditando && (
+                  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[90vh] overflow-y-auto">
+                      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
+                          <UserCog className="w-4 h-4" />
+                          <h4>Editar Credenciales y Aulas del Personal</h4>
+                        </div>
+                        <button onClick={() => setPersonalEditando(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={guardarEdicionPersonal} className="space-y-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Cargo / Función</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditRolPersonal('auxiliar')}
+                              className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                                editRolPersonal === 'auxiliar' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                              }`}
+                            >
+                              <Clock className="w-3.5 h-3.5" /> Auxiliar de Educación
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditRolPersonal('docente')}
+                              className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                                editRolPersonal === 'docente' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                              }`}
+                            >
+                              <Users className="w-3.5 h-3.5" /> Docente de Aula
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Nombre Completo y Área</label>
+                          <input
+                            type="text"
+                            value={editNombrePersonal}
+                            onChange={(e) => setEditNombrePersonal(e.target.value)}
+                            required
+                            className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Usuario de Login</label>
+                            <input
+                              type="text"
+                              value={editUserPersonal}
+                              onChange={(e) => setEditUserPersonal(e.target.value)}
+                              required
+                              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Contraseña</label>
+                            <input
+                              type="text"
+                              value={editClavePersonal}
+                              onChange={(e) => setEditClavePersonal(e.target.value)}
+                              required
+                              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-slate-700 uppercase">
+                              Secciones Asignadas ({editAulasPersonal.length}):
+                            </label>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'].map(g => (
+                              <button
+                                type="button"
+                                key={g}
+                                onClick={() => alternarGradoCompletoEdicion(g)}
+                                className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold py-1 px-2 rounded-lg transition"
+                              >
+                                + Todo {g.slice(0, 3)}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                            {todasLasAulasColegio.map(aula => {
+                              const clave = `${aula.grade}|${aula.section}`;
+                              const estaMarcada = editAulasPersonal.includes(clave);
+                              return (
+                                <button
+                                  type="button"
+                                  key={clave}
+                                  onClick={() => alternarSeleccionAulaEdicion(clave)}
+                                  className={`p-2 rounded-lg text-xs font-bold border text-left flex items-center justify-between transition-all ${
+                                    estaMarcada 
+                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' 
+                                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span className="truncate">{aula.grade} - {aula.section}</span>
+                                  {estaMarcada ? (
+                                    <CheckSquare className="w-4 h-4 shrink-0 text-white" />
+                                  ) : (
+                                    <Square className="w-4 h-4 shrink-0 text-slate-400" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setPersonalEditando(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                          >
+                            <Save className="w-4 h-4" /> Guardar Cambios
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl">
                   <h4 className="text-xs font-bold text-rose-800 uppercase mb-1">Zona de Entrega de Software</h4>
