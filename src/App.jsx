@@ -74,7 +74,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v24');
+      const local = localStorage.getItem('dh_cola_offline_v25');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -87,7 +87,7 @@ export default function App() {
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]');
     } catch {
       colaActual = [];
     }
@@ -128,7 +128,7 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v24', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v25', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
@@ -156,7 +156,7 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v24');
+      const local = localStorage.getItem('dh_usuarios_v25');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -166,7 +166,7 @@ export default function App() {
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v24');
+      const local = localStorage.getItem('dh_estudiantes_v25');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -176,7 +176,7 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v24');
+      const local = localStorage.getItem('dh_asistencias_v25');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
@@ -201,13 +201,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v24', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v25', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v24', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v25', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -221,7 +221,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v24', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v25', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -268,8 +268,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v24', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v24', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v25', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v25', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -293,7 +293,7 @@ export default function App() {
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v24');
+      const sesion = localStorage.getItem('dh_sesion_v25');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -323,7 +323,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v24', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v25', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -335,7 +335,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v24');
+      localStorage.removeItem('dh_sesion_v25');
     }
   };
 
@@ -400,7 +400,7 @@ export default function App() {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v24', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v25', JSON.stringify(res));
       return res;
     });
 
@@ -428,10 +428,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -442,10 +442,10 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
     });
   };
 
@@ -469,7 +469,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v24', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v25', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -490,10 +490,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -517,10 +517,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v24') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v24', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -824,7 +824,7 @@ export default function App() {
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v24', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v25', JSON.stringify(nuevosUsuarios));
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -854,7 +854,7 @@ export default function App() {
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v24', JSON.stringify(restantes));
+      localStorage.setItem('dh_usuarios_v25', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -915,7 +915,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v24', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v25', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -959,7 +959,7 @@ export default function App() {
 
     const listaActualizada = [...estudiantes, nuevo];
     setEstudiantes(listaActualizada);
-    localStorage.setItem('dh_estudiantes_v24', JSON.stringify(listaActualizada));
+    localStorage.setItem('dh_estudiantes_v25', JSON.stringify(listaActualizada));
 
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
@@ -978,7 +978,7 @@ export default function App() {
     if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
       const restantes = estudiantes.filter(e => e.id !== id);
       setEstudiantes(restantes);
-      localStorage.setItem('dh_estudiantes_v24', JSON.stringify(restantes));
+      localStorage.setItem('dh_estudiantes_v25', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1017,7 +1017,7 @@ export default function App() {
 
     const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
     setEstudiantes(estudiantesActualizados);
-    localStorage.setItem('dh_estudiantes_v24', JSON.stringify(estudiantesActualizados));
+    localStorage.setItem('dh_estudiantes_v25', JSON.stringify(estudiantesActualizados));
 
     try {
       await supabase.from('estudiantes').update({
@@ -1166,7 +1166,7 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        localStorage.setItem('dh_estudiantes_v24', JSON.stringify(cargados));
+        localStorage.setItem('dh_estudiantes_v25', JSON.stringify(cargados));
 
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
@@ -1186,8 +1186,246 @@ export default function App() {
   };
 
   // =========================================================================
-  // RENDER PRINCIPAL
+  // PANTALLAS DE CONTROL (CARGANDO, PRIMER DIRECTOR, LOGIN)
   // =========================================================================
+
+  // 1. Pantalla de carga
+  if (cargandoInicial) {
+    return (
+      <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
+        <div className="w-16 h-16 bg-emerald-900 rounded-3xl flex items-center justify-center shadow-2xl mb-4 border border-emerald-600 animate-bounce">
+          <School className="w-8 h-8 text-emerald-300" />
+        </div>
+        <h2 className="text-lg font-black tracking-tight">I.E.E. "Daniel Hernández"</h2>
+        <p className="text-xs text-emerald-200 mt-1 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Verificando sistema...
+        </p>
+      </div>
+    );
+  }
+
+  // 2. Pantalla para crear al primer director
+  if (!existeDirector) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-emerald-800 p-6 text-center text-white">
+            <div className="w-16 h-16 bg-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-emerald-700">
+              <Sparkles className="w-9 h-9 text-emerald-300" />
+            </div>
+            <h1 className="text-xl font-black tracking-tight">I.E.E. "Daniel Hernández"</h1>
+            <p className="text-xs text-emerald-200 mt-1">Configuración Inicial del Sistema</p>
+          </div>
+
+          <form onSubmit={registrarPrimerDirector} className="p-5 sm:p-6 space-y-3.5">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 font-medium leading-relaxed">
+              El sistema se encuentra en <b>estado inicial</b>. Registre la cuenta del <b>Director General</b>:
+            </div>
+
+            {errorPrimerRegistro && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{errorPrimerRegistro}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre Completo del Director(a)</label>
+              <input
+                type="text"
+                placeholder="Ej: Lic. Rafael Moisés Velarde Rico"
+                value={primerNombreDirector}
+                onChange={(e) => setPrimerNombreDirector(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario para Iniciar Sesión</label>
+              <input
+                type="text"
+                placeholder="Ej: director"
+                value={primerUserDirector}
+                onChange={(e) => setPrimerUserDirector(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={primerClaveDirector}
+                  onChange={(e) => setPrimerClaveDirector(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Repetir Contraseña</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={primerClaveConfirm}
+                  onChange={(e) => setPrimerClaveConfirm(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={guardandoDirector}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3.5 rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 transition mt-2"
+            >
+              {guardandoDirector ? <Loader2 className="w-5 h-5 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+              <span>{guardandoDirector ? 'Guardando...' : 'Activar Sistema y Crear Director'}</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. PANTALLA DE LOGIN
+  if (!usuarioAutenticado) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="bg-emerald-700 p-5 sm:p-6 text-center text-white">
+            <div className="w-14 h-14 bg-emerald-800 rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+              <School className="w-8 h-8 text-emerald-200" />
+            </div>
+            <h1 className="text-xl font-black tracking-tight">I.E.E. "Daniel Hernández"</h1>
+            <p className="text-xs text-emerald-200 mt-0.5">Control de Asistencia Escolar 2026</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="p-4 sm:p-6 space-y-4">
+            {!estaEnLinea && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-2.5 rounded-xl flex items-center gap-2">
+                <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Modo Sin Señal: Ingreso habilitado en este teléfono.</span>
+              </div>
+            )}
+
+            {errorLogin && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{errorLogin}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario</label>
+              <input 
+                type="text" 
+                placeholder="Ingrese su usuario asignado"
+                value={inputUsuario}
+                onChange={(e) => setInputUsuario(e.target.value)}
+                required
+                className="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Contraseña</label>
+                <button
+                  type="button"
+                  onClick={() => setModalRecuperar(true)}
+                  className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold hover:underline"
+                >
+                  ¿Olvidaste tu clave?
+                </button>
+              </div>
+              <div className="relative">
+                <input 
+                  type={mostrarClave ? "text" : "password"} 
+                  placeholder="••••••••"
+                  value={inputClave}
+                  onChange={(e) => setInputClave(e.target.value)}
+                  required
+                  className="w-full pl-3.5 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarClave(!mostrarClave)}
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                >
+                  {mostrarClave ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5 text-slate-500" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-0.5">
+              <input
+                type="checkbox"
+                id="recordar"
+                checked={recordarSesion}
+                onChange={(e) => setRecordarSesion(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <label htmlFor="recordar" className="text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                Mantener sesión abierta en este celular
+              </label>
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3.5 rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all mt-2"
+            >
+              <Lock className="w-4 h-4" /> Iniciar Sesión
+            </button>
+          </form>
+        </div>
+
+        {modalRecuperar && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-emerald-700 font-bold">
+                  <HelpCircle className="w-5 h-5" />
+                  <h3>Recuperar Contraseña</h3>
+                </div>
+                <button onClick={() => setModalRecuperar(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                Comuníquese directamente con la Dirección del Colegio para solicitar la restauración de sus credenciales.
+              </p>
+
+              <div className="space-y-2">
+                <a
+                  href={`https://wa.me/51964123456?text=${encodeURIComponent('Hola Dirección, solicito recuperar mi clave de acceso al sistema.')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow"
+                >
+                  <MessageCircle className="w-4 h-4" /> Contactar a Dirección por WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setModalRecuperar(false)}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 rounded-xl transition"
+                >
+                  Regresar al login
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 4. APLICACIÓN PRINCIPAL (USUARIO YA AUTENTICADO)
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
       
@@ -1228,9 +1466,9 @@ export default function App() {
                 <h1 className="text-sm font-black tracking-tight leading-none truncate">I.E.E. Daniel Hernández</h1>
                 <div className="flex items-center gap-1 mt-1 text-[11px] text-emerald-200">
                   <UserCheck className="w-3 h-3 shrink-0" />
-                  <span className="font-semibold truncate max-w-[130px] sm:max-w-[200px]">{usuarioAutenticado.nombre}</span>
+                  <span className="font-semibold truncate max-w-[130px] sm:max-w-[200px]">{usuarioAutenticado?.nombre}</span>
                   <span className="bg-emerald-900/90 text-[9px] px-1.5 py-0.2 rounded font-black uppercase shrink-0">
-                    {usuarioAutenticado.rol}
+                    {usuarioAutenticado?.rol}
                   </span>
                 </div>
               </div>
@@ -2328,7 +2566,7 @@ export default function App() {
                     onChange={(e) => setEditNombre(e.target.value)}
                     required
                     placeholder="APELLIDOS Y NOMBRES"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -2374,7 +2612,7 @@ export default function App() {
                     value={editTelefono}
                     onChange={(e) => setEditTelefono(e.target.value)}
                     placeholder="Ej: 964123456"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -2401,7 +2639,7 @@ export default function App() {
         {/* PIE DE PÁGINA */}
         <div className="mt-8 pt-4 border-t border-slate-200 flex flex-col items-center gap-2">
           <p className="text-[11px] text-slate-400 font-medium">
-            Sesión iniciada: <b>{usuarioAutenticado.nombre}</b>
+            Sesión iniciada: <b>{usuarioAutenticado?.nombre}</b>
           </p>
           <button
             onClick={handleLogout}
