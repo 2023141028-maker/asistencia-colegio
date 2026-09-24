@@ -9,7 +9,6 @@ import {
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
   Loader2, FileText, Settings
 } from 'lucide-react';
-
 // Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
 const AULAS_OFICIALES_DH = [
   // 1ro de Secundaria[cite: 2]
