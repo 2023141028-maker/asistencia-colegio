@@ -10,37 +10,37 @@ import {
   Loader2, FileText, Settings
 } from 'lucide-react';
 
-// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"[cite: 2]
+// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
 const AULAS_OFICIALES_DH = [
-  // 1ro de Secundaria[cite: 2]
+  // 1ro de Secundaria
   { grade: 'PRIMERO', section: 'RESPONSABILIDAD' },
   { grade: 'PRIMERO', section: 'HONRADEZ' },
   { grade: 'PRIMERO', section: 'RESPETO' },
   { grade: 'PRIMERO', section: 'SOLIDARIDAD' },
   { grade: 'PRIMERO', section: 'PERSEVERANCIA' },
   { grade: 'PRIMERO', section: 'LABORIOSIDAD' },
-  // 2do de Secundaria[cite: 2]
+  // 2do de Secundaria
   { grade: 'SEGUNDO', section: 'D. A. CARRIÓN' },
   { grade: 'SEGUNDO', section: 'SAN MARTÍN' },
   { grade: 'SEGUNDO', section: 'MIGUEL GRAU' },
   { grade: 'SEGUNDO', section: 'JOSÉ OLAYA' },
   { grade: 'SEGUNDO', section: 'F. BOLOGNESI' },
   { grade: 'SEGUNDO', section: 'A. A. CÁCERES' },
-  // 3ro de Secundaria[cite: 2]
+  // 3ro de Secundaria
   { grade: 'TERCERO', section: 'A. VALDELOMAR' },
   { grade: 'TERCERO', section: 'C. ALEGRÍA' },
   { grade: 'TERCERO', section: 'J. C. MARIÁTEGUI' },
   { grade: 'TERCERO', section: 'C. VALLEJO' },
   { grade: 'TERCERO', section: 'R. PALMA' },
   { grade: 'TERCERO', section: 'M. V. LLOSA' },
-  // 4to de Secundaria[cite: 2]
+  // 4to de Secundaria
   { grade: 'CUARTO', section: 'N. TESLA' },
   { grade: 'CUARTO', section: 'R. DESCARTES' },
   { grade: 'CUARTO', section: 'P. FERMAT' },
   { grade: 'CUARTO', section: 'I. NEWTON' },
   { grade: 'CUARTO', section: 'T. ALVA' },
   { grade: 'CUARTO', section: 'F. GAUSS' },
-  // 5to de Secundaria[cite: 2]
+  // 5to de Secundaria
   { grade: 'QUINTO', section: 'SÓCRATES' },
   { grade: 'QUINTO', section: 'T. MILETO' },
   { grade: 'QUINTO', section: 'PLATÓN' },
@@ -74,7 +74,7 @@ export default function App() {
   const [estaEnLinea, setEstaEnLinea] = useState(navigator.onLine);
   const [colaPendientes, setColaPendientes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_cola_offline_v25');
+      const local = localStorage.getItem('dh_cola_offline_v26');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -83,11 +83,12 @@ export default function App() {
 
   const [sincronizando, setSincronizando] = useState(false);
   const [avisoSync, setAvisoSync] = useState('');
+  const [avisoAutoGuardado, setAvisoAutoGuardado] = useState('');
 
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]');
+      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]');
     } catch {
       colaActual = [];
     }
@@ -128,11 +129,11 @@ export default function App() {
     }
 
     setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v25', JSON.stringify(fallidos));
+    localStorage.setItem('dh_cola_offline_v26', JSON.stringify(fallidos));
     setSincronizando(false);
 
     if (subidosConExito > 0) {
-      setAvisoSync(`¡Conexión restaurada! Se sincronizaron ${subidosConExito} registro(s) con la nube.`);
+      setAvisoSync(`¡Conexión lista! Se sincronizaron ${subidosConExito} registro(s) con la nube.`);
       setTimeout(() => setAvisoSync(''), 4500);
     }
   }, []);
@@ -156,7 +157,7 @@ export default function App() {
   // USUARIOS
   const [usuarios, setUsuarios] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_usuarios_v25');
+      const local = localStorage.getItem('dh_usuarios_v26');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -166,7 +167,7 @@ export default function App() {
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_estudiantes_v25');
+      const local = localStorage.getItem('dh_estudiantes_v26');
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -176,7 +177,7 @@ export default function App() {
   // ASISTENCIAS
   const [asistencias, setAsistencias] = useState(() => {
     try {
-      const local = localStorage.getItem('dh_asistencias_v25');
+      const local = localStorage.getItem('dh_asistencias_v26');
       return local ? JSON.parse(local) : {};
     } catch {
       return {};
@@ -201,13 +202,13 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v25', JSON.stringify(formateados));
+            localStorage.setItem('dh_usuarios_v26', JSON.stringify(formateados));
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
           if (resEst && !resEst.error && resEst.data && resEst.data.length > 0 && montado) {
             setEstudiantes(resEst.data);
-            localStorage.setItem('dh_estudiantes_v25', JSON.stringify(resEst.data));
+            localStorage.setItem('dh_estudiantes_v26', JSON.stringify(resEst.data));
           }
 
           const resAsis = await conLimiteDeTiempo(supabase.from('asistencias').select('*'), 2000).catch(() => null);
@@ -221,7 +222,7 @@ export default function App() {
               };
             });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
-            localStorage.setItem('dh_asistencias_v25', JSON.stringify(agrupadas));
+            localStorage.setItem('dh_asistencias_v26', JSON.stringify(agrupadas));
           }
         }
       } catch (e) {
@@ -268,8 +269,8 @@ export default function App() {
 
     setUsuarios([directorNuevo]);
     setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v25', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v25', JSON.stringify(directorNuevo));
+    localStorage.setItem('dh_usuarios_v26', JSON.stringify([directorNuevo]));
+    localStorage.setItem('dh_sesion_v26', JSON.stringify(directorNuevo));
 
     try {
       await conLimiteDeTiempo(
@@ -293,7 +294,7 @@ export default function App() {
   // SESIÓN
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
-      const sesion = localStorage.getItem('dh_sesion_v25');
+      const sesion = localStorage.getItem('dh_sesion_v26');
       return sesion ? JSON.parse(sesion) : null;
     } catch {
       return null;
@@ -323,7 +324,7 @@ export default function App() {
     if (encontrado) {
       setUsuarioAutenticado(encontrado);
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v25', JSON.stringify(encontrado));
+        localStorage.setItem('dh_sesion_v26', JSON.stringify(encontrado));
       }
       setErrorLogin('');
       setInputClave('');
@@ -335,7 +336,7 @@ export default function App() {
   const handleLogout = () => {
     if (window.confirm('¿Desea cerrar la sesión actual?')) {
       setUsuarioAutenticado(null);
-      localStorage.removeItem('dh_sesion_v25');
+      localStorage.removeItem('dh_sesion_v26');
     }
   };
 
@@ -393,14 +394,18 @@ export default function App() {
     setAsistenciaAula(inicial);
   }, [alumnosAula, fechaHoy, asistencias]);
 
+  // =========================================================================
+  // MARCACIÓN Y AUTO-GUARDADO INSTANTÁNEO (PARA EL DIRECTOR Y BUSCADOR)
+  // =========================================================================
   const cambiarEstadoAlumno = (alumnoId, nuevoEstado) => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // 1. Guardar de inmediato en memoria local
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
       dia[alumnoId] = { status: nuevoEstado, time: hora };
       const res = { ...prev, [fechaHoy]: dia };
-      localStorage.setItem('dh_asistencias_v25', JSON.stringify(res));
+      localStorage.setItem('dh_asistencias_v26', JSON.stringify(res));
       return res;
     });
 
@@ -408,6 +413,16 @@ export default function App() {
 
     const alum = estudiantes.find(e => String(e.id) === String(alumnoId));
     if (!alum) return;
+
+    const descEstado = 
+      nuevoEstado === 'P' ? 'PRESENTE' :
+      nuevoEstado === 'T' ? 'TARDANZA' :
+      nuevoEstado === 'F' ? 'FALTA' :
+      nuevoEstado === 'E' ? 'EVASIÓN' : 'PERMISO';
+
+    // Aviso visual inmediato al Director de que ya quedó guardado
+    setAvisoAutoGuardado(`✅ ${alum.name} guardado como ${descEstado}`);
+    setTimeout(() => setAvisoAutoGuardado(''), 2500);
 
     const fila = [{
       fecha: fechaHoy,
@@ -428,10 +443,10 @@ export default function App() {
 
     if (!navigator.onLine) {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v26', JSON.stringify(nuevaCola));
       return;
     }
 
@@ -442,10 +457,10 @@ export default function App() {
       return conLimiteDeTiempo(supabase.from('asistencias').insert(fila), 2000);
     }).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v26', JSON.stringify(nuevaCola));
     });
   };
 
@@ -469,7 +484,7 @@ export default function App() {
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
-    localStorage.setItem('dh_asistencias_v25', JSON.stringify(asistenciasActualizadas));
+    localStorage.setItem('dh_asistencias_v26', JSON.stringify(asistenciasActualizadas));
 
     const filas = alumnosAula.map(alumno => ({
       fecha: fechaHoy,
@@ -490,10 +505,10 @@ export default function App() {
 
     const guardarEnColaLocal = () => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
       const nuevaCola = [...colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta)), paquete];
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v26', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en el Teléfono! 📱 (Sin señal)');
       setGuardadoExitoso(true);
@@ -517,10 +532,10 @@ export default function App() {
       if (error) throw error;
 
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v25') || '[]'); } catch {}
+      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
       const nuevaCola = colaActual.filter(p => !(p.tipo === 'aula' && p.fecha === fechaHoy && p.seccion === seccionCompleta));
       setColaPendientes(nuevaCola);
-      localStorage.setItem('dh_cola_offline_v25', JSON.stringify(nuevaCola));
+      localStorage.setItem('dh_cola_offline_v26', JSON.stringify(nuevaCola));
 
       setMensajeGuardado('¡Guardado en la Nube! ☁️');
       setGuardadoExitoso(true);
@@ -824,7 +839,7 @@ export default function App() {
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v25', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v26', JSON.stringify(nuevosUsuarios));
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -854,7 +869,7 @@ export default function App() {
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v25', JSON.stringify(restantes));
+      localStorage.setItem('dh_usuarios_v26', JSON.stringify(restantes));
       try {
         await supabase.from('usuarios').delete().eq('id', id);
       } catch (e) {}
@@ -915,7 +930,7 @@ export default function App() {
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v25', JSON.stringify(nuevosUsuarios));
+    localStorage.setItem('dh_usuarios_v26', JSON.stringify(nuevosUsuarios));
 
     try {
       await supabase.from('usuarios').update({
@@ -959,7 +974,7 @@ export default function App() {
 
     const listaActualizada = [...estudiantes, nuevo];
     setEstudiantes(listaActualizada);
-    localStorage.setItem('dh_estudiantes_v25', JSON.stringify(listaActualizada));
+    localStorage.setItem('dh_estudiantes_v26', JSON.stringify(listaActualizada));
 
     setNuevoDniAlumno('');
     setNuevoNombreAlumno('');
@@ -978,7 +993,7 @@ export default function App() {
     if (window.confirm(`¿Confirmas el retiro o traslado del estudiante "${nombre}"?`)) {
       const restantes = estudiantes.filter(e => e.id !== id);
       setEstudiantes(restantes);
-      localStorage.setItem('dh_estudiantes_v25', JSON.stringify(restantes));
+      localStorage.setItem('dh_estudiantes_v26', JSON.stringify(restantes));
       try {
         await supabase.from('estudiantes').delete().eq('id', id);
       } catch (e) {}
@@ -1017,7 +1032,7 @@ export default function App() {
 
     const estudiantesActualizados = estudiantes.map(a => a.id === alumnoEditando.id ? estudianteActualizado : a);
     setEstudiantes(estudiantesActualizados);
-    localStorage.setItem('dh_estudiantes_v25', JSON.stringify(estudiantesActualizados));
+    localStorage.setItem('dh_estudiantes_v26', JSON.stringify(estudiantesActualizados));
 
     try {
       await supabase.from('estudiantes').update({
@@ -1095,8 +1110,8 @@ export default function App() {
           const row = (filas[r] || []).map(c => String(c || '').toUpperCase().trim());
           row.forEach((colText, idx) => {
             const clean = colText.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (clean.includes('GRADO')) colGrado = idx;
-            if (clean.includes('SECCION')) colSeccion = idx;
+            if (clean.includes('GRADO') && colGrado === -1) colGrado = idx;
+            if (clean.includes('SECCION') && colSeccion === -1) colSeccion = idx;
           });
         }
       }
@@ -1166,7 +1181,7 @@ export default function App() {
 
       if (cargados.length > 0) {
         setEstudiantes(cargados);
-        localStorage.setItem('dh_estudiantes_v25', JSON.stringify(cargados));
+        localStorage.setItem('dh_estudiantes_v26', JSON.stringify(cargados));
 
         try {
           await supabase.from('estudiantes').delete().neq('id', 'cero');
@@ -1186,10 +1201,10 @@ export default function App() {
   };
 
   // =========================================================================
-  // PANTALLAS DE CONTROL (CARGANDO, PRIMER DIRECTOR, LOGIN)
+  // PANTALLAS DE CONTROL
   // =========================================================================
 
-  // 1. Pantalla de carga
+  // 1. CARGANDO
   if (cargandoInicial) {
     return (
       <div className="min-h-screen bg-emerald-800 flex flex-col items-center justify-center p-4 text-white font-sans">
@@ -1204,7 +1219,7 @@ export default function App() {
     );
   }
 
-  // 2. Pantalla para crear al primer director
+  // 2. REGISTRO PRIMER DIRECTOR
   if (!existeDirector) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1292,7 +1307,7 @@ export default function App() {
     );
   }
 
-  // 3. PANTALLA DE LOGIN
+  // 3. PANTALLA LOGIN
   if (!usuarioAutenticado) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -1425,7 +1440,7 @@ export default function App() {
     );
   }
 
-  // 4. APLICACIÓN PRINCIPAL (USUARIO YA AUTENTICADO)
+  // 4. APLICACIÓN PRINCIPAL (USUARIO CONECTADO)
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
       
@@ -1444,6 +1459,14 @@ export default function App() {
             {sincronizando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-amber-700" />}
             <span>{sincronizando ? 'Subiendo...' : 'Subir Ahora ☁️'}</span>
           </button>
+        </div>
+      )}
+
+      {/* AVISO DE AUTO-GUARDADO INSTANTÁNEO */}
+      {avisoAutoGuardado && (
+        <div className="bg-emerald-600 text-white px-3 py-2 text-xs font-black flex items-center justify-center gap-1.5 shadow sticky top-0 z-50 animate-bounce">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-200" />
+          <span className="truncate">{avisoAutoGuardado}</span>
         </div>
       )}
 
@@ -1564,22 +1587,26 @@ export default function App() {
         {((esDirector && vistaDirector === 'asistencia') || esDocente || (esAuxiliar && subVistaAuxiliar === 'salones')) && (
           <div className="space-y-3.5">
             
-            {/* BUSCADOR UNIVERSAL DIRECTO DEL DIRECTOR */}
+            {/* BUSCADOR UNIVERSAL DIRECTO DEL DIRECTOR (AUTO-GUARDADO) */}
             {esDirector && (
-              <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-300">
+              <div className="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-emerald-500">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1.5">
                     <Search className="w-4 h-4 text-emerald-600" />
-                    Buscador de Alumno para Marcar Estado
+                    Buscador de Alumnos (Auto-guardado en 1 toque)
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">Total: {estudiantes.length} alumnos</span>
                 </div>
                 
+                <p className="text-[11px] text-slate-500 mb-2">
+                  Escriba el apellido o DNI del alumno y toque su estado. <b>Se guarda solo, no necesita elegir salón.</b>
+                </p>
+
                 <div className="relative">
                   <Search className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Escriba Apellidos o DNI del alumno..."
+                    placeholder="Escriba Apellidos o DNI de cualquier alumno..."
                     value={busquedaUniversal}
                     onChange={(e) => setBusquedaUniversal(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1599,7 +1626,7 @@ export default function App() {
                     {estudiantesFiltradosBuscador.map(alumno => {
                       const st = asistencias[fechaHoy]?.[alumno.id]?.status || 'P';
                       return (
-                        <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                        <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2 shadow-sm">
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">{alumno.name}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5 truncate">
@@ -1607,6 +1634,7 @@ export default function App() {
                             </p>
                           </div>
 
+                          {/* BOTONES DIRECTOS: AL TOCAR SE GUARDA AL INSTANTE */}
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
@@ -1614,7 +1642,7 @@ export default function App() {
                               className={`px-2 py-1.5 rounded-lg text-xs font-black border transition ${
                                 st === 'P' ? 'bg-emerald-600 text-white border-emerald-700 shadow' : 'bg-white text-slate-600 border-slate-200'
                               }`}
-                              title="Presente"
+                              title="Marcar Presente (Auto-guardado)"
                             >
                               P
                             </button>
@@ -1624,7 +1652,7 @@ export default function App() {
                               className={`px-2 py-1.5 rounded-lg text-xs font-black border transition ${
                                 st === 'T' ? 'bg-amber-500 text-white border-amber-600 shadow' : 'bg-white text-slate-600 border-slate-200'
                               }`}
-                              title="Tardanza"
+                              title="Marcar Tardanza (Auto-guardado)"
                             >
                               T
                             </button>
@@ -1634,7 +1662,7 @@ export default function App() {
                               className={`px-2 py-1.5 rounded-lg text-xs font-black border transition ${
                                 st === 'F' ? 'bg-rose-600 text-white border-rose-700 shadow' : 'bg-white text-slate-600 border-slate-200'
                               }`}
-                              title="Falta"
+                              title="Marcar Falta (Auto-guardado)"
                             >
                               F
                             </button>
@@ -1644,7 +1672,7 @@ export default function App() {
                               className={`px-2 py-1.5 rounded-lg text-xs font-black border transition ${
                                 st === 'E' ? 'bg-purple-700 text-white border-purple-800 shadow animate-pulse' : 'bg-white text-slate-600 border-slate-200'
                               }`}
-                              title="Evasión"
+                              title="Marcar Evasión (Auto-guardado)"
                             >
                               E
                             </button>
@@ -1654,7 +1682,7 @@ export default function App() {
                               className={`px-2 py-1.5 rounded-lg text-xs font-black border transition ${
                                 st === 'J' ? 'bg-sky-600 text-white border-sky-700 shadow' : 'bg-white text-slate-600 border-slate-200'
                               }`}
-                              title="Permiso Justificado"
+                              title="Marcar Permiso (Auto-guardado)"
                             >
                               J
                             </button>
@@ -1736,12 +1764,12 @@ export default function App() {
               </div>
             )}
 
-            {/* SELECTOR DE AULA */}
+            {/* REVISIÓN POR SALONES */}
             <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-emerald-200">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-bold text-emerald-800 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
                   <School className="w-3.5 h-3.5" /> 
-                  {esDirector ? 'Control de Asistencia por Salón' : `Mis Salones (${aulasPermitidasUsuario.length})`}
+                  {esDirector ? 'Revisión por Salón (Opcional)' : `Mis Salones (${aulasPermitidasUsuario.length})`}
                 </span>
                 <span className="text-[11px] text-slate-400 font-semibold">{alumnosAula.length} estudiantes</span>
               </div>
@@ -1845,7 +1873,7 @@ export default function App() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-6 h-6 shrink-0" /> 
-                      <span className="truncate">Guardar Asistencia de {seccionSel}</span>
+                      <span className="truncate">Guardar Salón Completo ({seccionSel})</span>
                     </>
                   )}
                 </button>
@@ -2566,7 +2594,7 @@ export default function App() {
                     onChange={(e) => setEditNombre(e.target.value)}
                     required
                     placeholder="APELLIDOS Y NOMBRES"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -2612,7 +2640,7 @@ export default function App() {
                     value={editTelefono}
                     onChange={(e) => setEditTelefono(e.target.value)}
                     placeholder="Ej: 964123456"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
