@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { guardarAsistenciaDocente } from './services/asistenciaService';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
