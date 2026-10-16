@@ -478,6 +478,36 @@ export default function App() {
   const guardarAsistenciaAula = async () => {
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const seccionCompleta = `${gradoSel} - ${seccionSel}`;
+    if (esDocente) {
+  try {
+    await guardarAsistenciaDocente({
+      fecha: fechaHoy,
+      alumnos: alumnosAula,
+      estados: asistenciaAula,
+      seccion: seccionCompleta,
+      nombreDocente: usuarioAutenticado?.nombre || 'Docente'
+    });
+
+    setMensajeGuardado('¡Asistencia del docente guardada en la Nube! ☁️');
+    setGuardadoExitoso(true);
+
+    setTimeout(() => {
+      setGuardadoExitoso(false);
+    }, 2500);
+
+  } catch (err) {
+    console.error('Error al guardar asistencia docente:', err);
+
+    setMensajeGuardado('No se pudo guardar la asistencia del docente.');
+    setGuardadoExitoso(true);
+
+    setTimeout(() => {
+      setGuardadoExitoso(false);
+    }, 3000);
+  }
+
+  return;
+}
 
     const nuevoDia = { ...(asistencias[fechaHoy] || {}) };
     Object.keys(asistenciaAula).forEach(id => {
