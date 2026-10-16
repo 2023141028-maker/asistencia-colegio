@@ -921,21 +921,104 @@ export default function App() {
         datos.push(['Alcance:', tituloAlcance]);
         datos.push(['Total Alumnos:', listaExportar.length]);
         datos.push([]);
-        datos.push(['N°', 'DNI', 'APELLIDOS Y NOMBRES', 'GRADO', 'SECCIÓN', 'ESTADO', 'HORA REGISTRO', 'CELULAR APODERADO']);
-
+        datos.push([
+          'N°',
+          'DNI',
+          'APELLIDOS Y NOMBRES',
+          'GRADO',
+          'SECCIÓN',
+          'ESTADO DIRECCIÓN',
+          'REGISTRADO POR DIRECCIÓN',
+          'ESTADO DOCENTE',
+          'REGISTRADO POR DOCENTE',
+          'HORA REGISTRO',
+          'OBSERVACIÓN',
+          'CELULAR APODERADO'
+        ]);
+        
         const diaActual = asistencias[fechaHoy] || {};
+        
         listaExportar.forEach((alumno, i) => {
-          const st = diaActual[alumno.id]?.status || 'P';
-          const hora = diaActual[alumno.id]?.time || '--:--';
-          const estadoDesc = 
-            st === 'P' ? 'PRESENTE' : 
-            st === 'T' ? 'TARDANZA' : 
-            st === 'F' ? 'FALTA' : 
-            st === 'E' ? 'EVASIÓN' : 'PERMISO (J)';
-          datos.push([i + 1, alumno.dni || 'S/D', alumno.name, alumno.grade, alumno.section, estadoDesc, hora, alumno.phone || '']);
+          const registro = diaActual[alumno.id];
+        
+          const estadoDireccion = registro?.status
+            ? obtenerNombreEstado(registro.status)
+            : 'SIN REGISTRO';
+        
+          const estadoDocente = registro?.docenteStatus
+            ? obtenerNombreEstado(registro.docenteStatus)
+            : 'SIN REGISTRO';
+        
+          const responsableDireccion =
+            registro?.registradoPor || 'SIN REGISTRO';
+        
+          const responsableDocente =
+            registro?.registradoDocentePor || 'SIN REGISTRO';
+        
+          const hora = registro?.time || '--:--';
+        
+          let observacion = '';
+        
+          if (
+            registro?.registradoPor === 'Sistema - sin control previo'
+          ) {
+            observacion = 'DOCENTE REGISTRÓ PRIMERO';
+          } else if (
+            registro?.status &&
+            registro?.docenteStatus &&
+            registro.status !== registro.docenteStatus
+          ) {
+            observacion = 'REVISAR DIFERENCIA';
+          } else if (
+            registro?.status &&
+            registro?.docenteStatus &&
+            registro.status === registro.docenteStatus
+          ) {
+            observacion = 'COINCIDE';
+          } else if (
+            registro?.docenteStatus &&
+            !registro?.status
+          ) {
+            observacion = 'PENDIENTE DIRECCIÓN';
+          } else if (
+            registro?.status &&
+            !registro?.docenteStatus
+          ) {
+            observacion = 'PENDIENTE DOCENTE';
+          } else {
+            observacion = 'SIN REGISTRO';
+          }
+        
+          datos.push([
+            i + 1,
+            alumno.dni || 'S/D',
+            alumno.name,
+            alumno.grade,
+            alumno.section,
+            estadoDireccion,
+            responsableDireccion,
+            estadoDocente,
+            responsableDocente,
+            hora,
+            observacion,
+            alumno.phone || ''
+          ]);
         });
-
-        anchosCols = [{ wch: 6 }, { wch: 12 }, { wch: 38 }, { wch: 14 }, { wch: 25 }, { wch: 16 }, { wch: 15 }, { wch: 18 }];
+        
+        anchosCols = [
+          { wch: 6 },
+          { wch: 12 },
+          { wch: 38 },
+          { wch: 14 },
+          { wch: 24 },
+          { wch: 20 },
+          { wch: 30 },
+          { wch: 20 },
+          { wch: 35 },
+          { wch: 15 },
+          { wch: 24 },
+          { wch: 18 }
+        ];
 
       } else if (tipoPeriodoReporte === 'semana') {
         const diasSemana = obtenerDiasSemana(fechaHoy);
