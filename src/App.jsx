@@ -102,7 +102,17 @@ export default function App() {
 
     for (const item of colaActual) {
       try {
-        if (item.tipo === 'aula') {
+        if (item.tipo === 'aula_docente') {
+          await guardarAsistenciaDocente({
+            fecha: item.fecha,
+            alumnos: item.alumnos,
+            estados: item.estados,
+            seccion: item.seccion,
+            nombreDocente: item.nombreDocente || 'Docente'
+          });
+    
+        } else if (item.tipo === 'aula') {
+      
           await conLimiteDeTiempo(
             supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('seccion', item.seccion),
             3000
