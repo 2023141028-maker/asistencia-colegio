@@ -796,6 +796,15 @@ export default function App() {
 
     return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista };
   }, [asistencias, estudiantes, fechaHoy]);
+  const obtenerNombreEstado = (estado) => {
+  if (estado === 'P') return 'PRESENTE';
+  if (estado === 'T') return 'TARDANZA';
+  if (estado === 'F') return 'FALTA';
+  if (estado === 'E') return 'EVASIÓN';
+  if (estado === 'J') return 'PERMISO';
+
+  return estado || 'SIN REGISTRO';
+};
   const discrepanciasDirector = useMemo(() => {
   const dia = asistencias[fechaHoy] || {};
 
@@ -2015,7 +2024,7 @@ export default function App() {
                           </p>
             
                           <p className="text-sm font-black text-slate-800">
-                            {item.estadoDireccion}
+                            {obtenerNombreEstado(item.estadoDireccion)}
                           </p>
             
                           <p className="text-[9px] text-slate-500 truncate">
@@ -2031,7 +2040,7 @@ export default function App() {
                           </p>
             
                           <p className="text-sm font-black text-blue-700">
-                            {item.estadoDocente}
+                            {obtenerNombreEstado(item.estadoDocente)}
                           </p>
             
                           <p className="text-[9px] text-blue-500 truncate">
