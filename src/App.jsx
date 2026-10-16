@@ -1101,27 +1101,62 @@ export default function App() {
         ];
       }
 
-      const ws = XLSX.utils.aoa_to_sheet(datos);
-      ws['!cols'] = anchosCols;
-      const ultimaColumna = XLSX.utils.decode_range(ws['!ref']).e.c;
+     const ws = XLSX.utils.aoa_to_sheet(datos);
 
+      // ============================================================
+      // PRESENTACIÓN GENERAL DEL ARCHIVO EXCEL
+      // ============================================================
+      
+      // Anchos definidos previamente según el tipo de reporte
+      ws['!cols'] = anchosCols;
+      
+      // Detectar tamaño total del reporte
+      const rangoHoja = XLSX.utils.decode_range(ws['!ref']);
+      const ultimaColumna = rangoHoja.e.c;
+      
+      // ============================================================
+      // TÍTULO PRINCIPAL COMBINADO
+      // ============================================================
+      
       ws['!merges'] = [
         {
           s: { r: 0, c: 0 },
           e: { r: 0, c: ultimaColumna }
         }
       ];
-      // Altura de filas para mejorar presentación
-      ws['!rows'] = [
-        { hpt: 24 }, // Título
-        { hpt: 20 },
-        { hpt: 20 },
-        { hpt: 20 },
-        { hpt: 20 },
-        { hpt: 8 }
-      ];
-            // ============================================================
-      // FILTROS AUTOMÁTICOS EN EXCEL
+      
+      // ============================================================
+      // ALTURA DE FILAS
+      // ============================================================
+      
+      const totalFilas = rangoHoja.e.r + 1;
+      
+      ws['!rows'] = Array.from(
+        { length: totalFilas },
+        (_, index) => {
+      
+          // Título principal
+          if (index === 0) {
+            return { hpt: 28 };
+          }
+      
+          // Información institucional
+          if (index >= 1 && index <= 4) {
+            return { hpt: 20 };
+          }
+      
+          // Separador
+          if (index === 5) {
+            return { hpt: 8 };
+          }
+      
+          // Encabezado y datos
+          return { hpt: 20 };
+        }
+      );
+      
+      // ============================================================
+      // IDENTIFICAR FILA DE ENCABEZADOS
       // ============================================================
       
       let filaEncabezadoExcel = 0;
@@ -1134,7 +1169,9 @@ export default function App() {
         filaEncabezadoExcel = 6;
       }
       
-      const rangoHoja = XLSX.utils.decode_range(ws['!ref']);
+      // ============================================================
+      // FILTROS AUTOMÁTICOS
+      // ============================================================
       
       ws['!autofilter'] = {
         ref: XLSX.utils.encode_range({
@@ -1149,18 +1186,64 @@ export default function App() {
         })
       };
       
-      // Congelar encabezados para que permanezcan visibles al desplazarse
+      // ============================================================
+      // CONGELAR ENCABEZADOS
+      // ============================================================
+      
       ws['!freeze'] = {
         xSplit: 0,
         ySplit: filaEncabezadoExcel + 1
       };
-      // Configuración general de vista
-      ws['!sheetView'] = [{
-        showGridLines: true
-      }];
       
-      XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
-      XLSX.writeFile(wb, nombreArchivo);
+      // ============================================================
+      // MÁRGENES DE IMPRESIÓN
+      // ============================================================
+      
+      ws['!margins'] = {
+        left: 0.4,
+        right: 0.4,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2
+      };
+      
+      // ============================================================
+      // CONFIGURACIÓN DE PÁGINA
+      // ============================================================
+      
+      // Diario puede verse bien vertical.
+      // Semanal y mensual tienen muchas columnas,
+      // por eso se preparan en orientación horizontal.
+      ws['!pageSetup'] = {
+        orientation:
+          tipoPeriodoReporte === 'dia'
+            ? 'portrait'
+            : 'landscape',
+      
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9
+      };
+      
+      // ============================================================
+      // AGREGAR HOJA AL LIBRO
+      // ============================================================
+      
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        'Reporte'
+      );
+      
+      // ============================================================
+      // DESCARGAR ARCHIVO
+      // ============================================================
+      
+      XLSX.writeFile(
+        wb,
+        nombreArchivo
+      );
       
           } catch (err) {
             alert('Error al generar Excel: ' + err.message);
