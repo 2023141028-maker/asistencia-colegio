@@ -112,16 +112,42 @@ export default function App() {
           });
     
         } else if (item.tipo === 'aula') {
-      
-          await conLimiteDeTiempo(
-            supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('seccion', item.seccion),
-            3000
-          );
-          const { error } = await conLimiteDeTiempo(
-            supabase.from('asistencias').insert(item.filas),
-            3000
-          );
-          if (error) throw error;
+
+  for (const fila of item.filas) {
+
+    const { data, error } = await conLimiteDeTiempo(
+      supabase
+        .from('asistencias')
+        .update({
+          estudiante_nombre: fila.estudiante_nombre,
+          seccion: fila.seccion,
+          estado: fila.estado,
+          registrado_por: fila.registrado_por
+        })
+        .eq('fecha', fila.fecha)
+        .eq('estudiante_id', fila.estudiante_id)
+        .select('id'),
+      3000
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+
+      const { error: errorInsert } = await conLimiteDeTiempo(
+        supabase
+          .from('asistencias')
+          .insert([fila]),
+        3000
+      );
+
+      if (errorInsert) {
+        throw errorInsert;
+      }
+    }
+  }
         } else if (item.tipo === 'alumno_individual') {
           await conLimiteDeTiempo(
             supabase.from('asistencias').delete().eq('fecha', item.fecha).eq('estudiante_id', item.estudiante_id),
