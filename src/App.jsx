@@ -1103,8 +1103,16 @@ export default function App() {
 
       const ws = XLSX.utils.aoa_to_sheet(datos);
       ws['!cols'] = anchosCols;
-      
-      // ============================================================
+      // Altura de filas para mejorar presentación
+      ws['!rows'] = [
+        { hpt: 24 }, // Título
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 8 }
+      ];
+            // ============================================================
       // FILTROS AUTOMÁTICOS EN EXCEL
       // ============================================================
       
@@ -1138,6 +1146,10 @@ export default function App() {
         xSplit: 0,
         ySplit: filaEncabezadoExcel + 1
       };
+      // Configuración general de vista
+      ws['!sheetView'] = [{
+        showGridLines: true
+      }];
       
       XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
       XLSX.writeFile(wb, nombreArchivo);
