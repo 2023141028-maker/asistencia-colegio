@@ -796,6 +796,37 @@ export default function App() {
 
     return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista };
   }, [asistencias, estudiantes, fechaHoy]);
+  const discrepanciasDirector = useMemo(() => {
+  const dia = asistencias[fechaHoy] || {};
+
+  return estudiantes
+    .map(alumno => {
+      const registro = dia[alumno.id];
+
+      if (!registro) return null;
+      if (!registro.docenteStatus) return null;
+
+      const estadoDireccion = registro.status;
+      const estadoDocente = registro.docenteStatus;
+
+      if (estadoDireccion === estadoDocente) {
+        return null;
+      }
+
+      return {
+        id: alumno.id,
+        nombre: alumno.name,
+        dni: alumno.dni || 'S/D',
+        grado: alumno.grade,
+        seccion: alumno.section,
+        estadoDireccion,
+        estadoDocente,
+        registradoPor: registro.registradoPor || '',
+        registradoDocentePor: registro.registradoDocentePor || ''
+      };
+    })
+    .filter(Boolean);
+}, [asistencias, estudiantes, fechaHoy]);
 
   // REPORTES EXCEL
   const [tipoPeriodoReporte, setTipoPeriodoReporte] = useState('dia');
