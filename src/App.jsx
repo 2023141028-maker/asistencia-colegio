@@ -452,7 +452,7 @@ export default function App() {
   }, [estudiantes, gradoSel, seccionSel]);
 
   const [asistenciaAula, setAsistenciaAula] = useState({});
-  const [guardadoExitoso, setGuardadoExitoso] = useState(false);x  
+  const [guardadoExitoso, setGuardadoExitoso] = useState(false);  
   const [mensajeGuardado, setMensajeGuardado] = useState('');
 
   useEffect(() => {
