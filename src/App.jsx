@@ -218,10 +218,17 @@ export default function App() {
             resAsis.data.forEach(reg => {
               if (!agrupadas[reg.fecha]) agrupadas[reg.fecha] = {};
               agrupadas[reg.fecha][reg.estudiante_id] = {
-                status: reg.estado,
-                time: reg.created_at ? new Date(reg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00'
-              };
-            });
+                  status: reg.estado,
+                  docenteStatus: reg.estado_docente || null,
+                  registradoPor: reg.registrado_por || '',
+                  registradoDocentePor: reg.registrado_docente_por || '',
+                  time: reg.created_at
+                    ? new Date(reg.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : '08:00'
+                };
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
             localStorage.setItem('dh_asistencias_v26', JSON.stringify(agrupadas));
           }
