@@ -399,6 +399,13 @@ export default function App() {
   // MARCACIÓN Y AUTO-GUARDADO INSTANTÁNEO (PARA EL DIRECTOR Y BUSCADOR)
   // =========================================================================
   const cambiarEstadoAlumno = (alumnoId, nuevoEstado) => {
+    if (esDocente) {
+  setAsistenciaAula(prev => ({
+    ...prev,
+    [alumnoId]: nuevoEstado
+  }));
+  return;
+}
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // 1. Guardar de inmediato en memoria local
