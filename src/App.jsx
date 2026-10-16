@@ -291,6 +291,7 @@ export default function App() {
                       })
                     : '08:00'
                 };
+              });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
             localStorage.setItem('dh_asistencias_v26', JSON.stringify(agrupadas));
           }
