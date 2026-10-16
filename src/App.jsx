@@ -1119,11 +1119,36 @@ export default function App() {
       // ============================================================
       
       ws['!merges'] = [
-        {
-          s: { r: 0, c: 0 },
-          e: { r: 0, c: ultimaColumna }
-        }
-      ];
+      // Título principal
+      {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: ultimaColumna }
+      },
+    
+      // Institución
+      {
+        s: { r: 1, c: 1 },
+        e: { r: 1, c: 4 }
+      },
+    
+      // Fecha
+      {
+        s: { r: 2, c: 1 },
+        e: { r: 2, c: 3 }
+      },
+    
+      // Alcance
+      {
+        s: { r: 3, c: 1 },
+        e: { r: 3, c: 5 }
+      },
+    
+      // Total alumnos
+      {
+        s: { r: 4, c: 1 },
+        e: { r: 4, c: 2 }
+      }
+    ];
       
       // ============================================================
       // ALTURA DE FILAS
@@ -1136,8 +1161,12 @@ export default function App() {
         (_, index) => {
       
           // Título principal
-          if (index === 0) {
-            return { hpt: 28 };
+         if (index === 0) {
+            return { hpt: 30 };
+          }
+          
+          if (index === filaEncabezadoExcel) {
+            return { hpt: 26 };
           }
       
           // Información institucional
