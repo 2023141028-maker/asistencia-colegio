@@ -495,18 +495,68 @@ export default function App() {
     cambiarEstadoAlumno(id, siguiente);
   };
 
-  const guardarAsistenciaAula = async () => {
-    const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const seccionCompleta = `${gradoSel} - ${seccionSel}`;
-    if (esDocente) {
-  try {
-    await guardarAsistenciaDocente({
-      fecha: fechaHoy,
-      alumnos: alumnosAula,
-      estados: asistenciaAula,
-      seccion: seccionCompleta,
-      nombreDocente: usuarioAutenticado?.nombre || 'Docente'
-    });
+    const guardarAsistenciaAula = async () => {
+      const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const seccionCompleta = `${gradoSel} - ${seccionSel}`;
+      if (esDocente) {
+            if (!navigator.onLine) {
+                let colaActual = [];
+
+                try {
+                  colaActual = JSON.parse(
+                    localStorage.getItem('dh_cola_offline_v26') || '[]'
+                  );
+                } catch {}
+          
+                const paqueteDocente = {
+                  id: `aula_docente_${Date.now()}`,
+                  tipo: 'aula_docente',
+                  fecha: fechaHoy,
+                  seccion: seccionCompleta,
+                  alumnos: alumnosAula,
+                  estados: asistenciaAula,
+                  nombreDocente: usuarioAutenticado?.nombre || 'Docente'
+                };
+          
+                const nuevaCola = [
+                  ...colaActual.filter(
+                    p =>
+                      !(
+                        p.tipo === 'aula_docente' &&
+                        p.fecha === fechaHoy &&
+                        p.seccion === seccionCompleta
+                      )
+                  ),
+                  paqueteDocente
+                ];
+          
+                setColaPendientes(nuevaCola);
+          
+                localStorage.setItem(
+                  'dh_cola_offline_v26',
+                  JSON.stringify(nuevaCola)
+                );
+          
+                setMensajeGuardado(
+                  '¡Asistencia del docente guardada en el teléfono! 📱'
+                );
+          
+                setGuardadoExitoso(true);
+          
+                setTimeout(() => {
+                  setGuardadoExitoso(false);
+                }, 3000);
+          
+                return;
+              }
+              try {
+                await guardarAsistenciaDocente({
+                    fecha: fechaHoy,
+                    alumnos: alumnosAula,
+                    estados: asistenciaAula,
+                    seccion: seccionCompleta,
+                    nombreDocente: usuarioAutenticado?.nombre || 'Docente'
+               });
 
     setMensajeGuardado('¡Asistencia del docente guardada en la Nube! ☁️');
     setGuardadoExitoso(true);
