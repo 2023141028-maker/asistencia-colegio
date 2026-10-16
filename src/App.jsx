@@ -1966,6 +1966,90 @@ export default function App() {
                 <p className="text-base sm:text-xl font-black text-sky-700">{metricasDirector.permisosHoy}</p>
               </div>
             </div>
+            
+            {/* DIFERENCIAS ENTRE DIRECCIÓN Y DOCENTE */}
+            {esDirector && discrepanciasDirector.length > 0 && (
+              <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 shadow-sm">
+            
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+            
+                  <div>
+                    <h3 className="text-sm font-black text-amber-900">
+                      Registros que requieren revisión
+                    </h3>
+            
+                    <p className="text-[11px] text-amber-700 font-semibold">
+                      {discrepanciasDirector.length} diferencia(s) entre Dirección y Docente
+                    </p>
+                  </div>
+                </div>
+            
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+            
+                  {discrepanciasDirector.map(item => (
+            
+                    <div
+                      key={item.id}
+                      className="bg-white border border-amber-200 rounded-xl p-3"
+                    >
+            
+                      <div className="mb-2">
+            
+                        <p className="text-xs font-black text-slate-800">
+                          {item.nombre}
+                        </p>
+            
+                        <p className="text-[10px] text-slate-500">
+                          DNI: {item.dni} • {item.grado} - {item.seccion}
+                        </p>
+            
+                      </div>
+            
+                      <div className="grid grid-cols-2 gap-2">
+            
+                        <div className="bg-slate-100 rounded-lg p-2 text-center">
+            
+                          <p className="text-[9px] font-bold text-slate-500 uppercase">
+                            Dirección
+                          </p>
+            
+                          <p className="text-sm font-black text-slate-800">
+                            {item.estadoDireccion}
+                          </p>
+            
+                          <p className="text-[9px] text-slate-500 truncate">
+                            {item.registradoPor || 'Sin responsable'}
+                          </p>
+            
+                        </div>
+            
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+            
+                          <p className="text-[9px] font-bold text-blue-600 uppercase">
+                            Docente
+                          </p>
+            
+                          <p className="text-sm font-black text-blue-700">
+                            {item.estadoDocente}
+                          </p>
+            
+                          <p className="text-[9px] text-blue-500 truncate">
+                            {item.registradoDocentePor || 'Sin docente'}
+                          </p>
+            
+                        </div>
+            
+                      </div>
+            
+                    </div>
+            
+                  ))}
+            
+                </div>
+            
+              </div>
+            )}
 
             {/* ALERTAS DE EVASIÓN */}
             {metricasDirector.evadieronHoyLista.length > 0 && (
