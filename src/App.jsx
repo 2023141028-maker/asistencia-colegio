@@ -383,17 +383,23 @@ export default function App() {
   }, [estudiantes, gradoSel, seccionSel]);
 
   const [asistenciaAula, setAsistenciaAula] = useState({});
-  const [guardadoExitoso, setGuardadoExitoso] = useState(false);
+  const [guardadoExitoso, setGuardadoExitoso] = useState(false);x  
   const [mensajeGuardado, setMensajeGuardado] = useState('');
 
   useEffect(() => {
-    const diaActual = asistencias[fechaHoy] || {};
-    const inicial = {};
-    alumnosAula.forEach(e => {
-      inicial[e.id] = diaActual[e.id]?.status || 'P';
-    });
-    setAsistenciaAula(inicial);
-  }, [alumnosAula, fechaHoy, asistencias]);
+  const diaActual = asistencias[fechaHoy] || {};
+  const inicial = {};
+
+  alumnosAula.forEach(e => {
+    const registro = diaActual[e.id];
+
+    inicial[e.id] = esDocente
+      ? (registro?.docenteStatus || registro?.status || 'P')
+      : (registro?.status || 'P');
+  });
+
+  setAsistenciaAula(inicial);
+}, [alumnosAula, fechaHoy, asistencias, esDocente]);
 
   // =========================================================================
   // MARCACIÓN Y AUTO-GUARDADO INSTANTÁNEO (PARA EL DIRECTOR Y BUSCADOR)
