@@ -1103,6 +1103,14 @@ export default function App() {
 
       const ws = XLSX.utils.aoa_to_sheet(datos);
       ws['!cols'] = anchosCols;
+      const ultimaColumna = XLSX.utils.decode_range(ws['!ref']).e.c;
+
+      ws['!merges'] = [
+        {
+          s: { r: 0, c: 0 },
+          e: { r: 0, c: ultimaColumna }
+        }
+      ];
       // Altura de filas para mejorar presentación
       ws['!rows'] = [
         { hpt: 24 }, // Título
