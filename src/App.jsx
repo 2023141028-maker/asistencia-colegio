@@ -1020,13 +1020,49 @@ export default function App() {
 
       const ws = XLSX.utils.aoa_to_sheet(datos);
       ws['!cols'] = anchosCols;
+      
+      // ============================================================
+      // FILTROS AUTOMÁTICOS EN EXCEL
+      // ============================================================
+      
+      let filaEncabezadoExcel = 0;
+      
+      if (tipoPeriodoReporte === 'dia') {
+        filaEncabezadoExcel = 6;
+      } else if (tipoPeriodoReporte === 'semana') {
+        filaEncabezadoExcel = 5;
+      } else if (tipoPeriodoReporte === 'mes') {
+        filaEncabezadoExcel = 6;
+      }
+      
+      const rangoHoja = XLSX.utils.decode_range(ws['!ref']);
+      
+      ws['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+          s: {
+            r: filaEncabezadoExcel,
+            c: 0
+          },
+          e: {
+            r: rangoHoja.e.r,
+            c: rangoHoja.e.c
+          }
+        })
+      };
+      
+      // Congelar encabezados para que permanezcan visibles al desplazarse
+      ws['!freeze'] = {
+        xSplit: 0,
+        ySplit: filaEncabezadoExcel + 1
+      };
+      
       XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
       XLSX.writeFile(wb, nombreArchivo);
-
-    } catch (err) {
-      alert('Error al generar Excel: ' + err.message);
-    }
-  };
+      
+          } catch (err) {
+            alert('Error al generar Excel: ' + err.message);
+          }
+        };
 
   const enviarWhatsApp = (alumno, tipoAlerta) => {
     let mensaje = '';
