@@ -812,9 +812,15 @@ export default function App() {
     .map(alumno => {
       const registro = dia[alumno.id];
 
-      if (!registro) return null;
-      if (!registro.docenteStatus) return null;
-
+     if (!registro) return null;
+     if (!registro.docenteStatus) return null;
+      
+      // Si el registro fue creado automáticamente porque el docente
+      // marcó primero, todavía no existe control real de Dirección.
+      if (registro.registradoPor === 'Sistema - sin control previo') {
+        return null;
+      }
+      
       const estadoDireccion = registro.status;
       const estadoDocente = registro.docenteStatus;
 
