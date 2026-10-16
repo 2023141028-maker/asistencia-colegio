@@ -1149,7 +1149,19 @@ export default function App() {
         e: { r: 4, c: 2 }
       }
     ];
+      // ============================================================
+      // IDENTIFICAR FILA DE ENCABEZADOS
+      // ============================================================
       
+      let filaEncabezadoExcel = 0;
+      
+      if (tipoPeriodoReporte === 'dia') {
+        filaEncabezadoExcel = 6;
+      } else if (tipoPeriodoReporte === 'semana') {
+        filaEncabezadoExcel = 5;
+      } else if (tipoPeriodoReporte === 'mes') {
+        filaEncabezadoExcel = 6;
+      }
       // ============================================================
       // ALTURA DE FILAS
       // ============================================================
@@ -1184,19 +1196,7 @@ export default function App() {
         }
       );
       
-      // ============================================================
-      // IDENTIFICAR FILA DE ENCABEZADOS
-      // ============================================================
       
-      let filaEncabezadoExcel = 0;
-      
-      if (tipoPeriodoReporte === 'dia') {
-        filaEncabezadoExcel = 6;
-      } else if (tipoPeriodoReporte === 'semana') {
-        filaEncabezadoExcel = 5;
-      } else if (tipoPeriodoReporte === 'mes') {
-        filaEncabezadoExcel = 6;
-      }
       
       // ============================================================
       // FILTROS AUTOMÁTICOS
