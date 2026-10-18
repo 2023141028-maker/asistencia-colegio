@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { guardarAsistenciaDocente } from './services/asistenciaService';
+import { generarReporteDiarioExcel } from './services/excelService';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
@@ -908,6 +909,22 @@ export default function App() {
         if (a.section !== b.section) return a.section.localeCompare(b.section);
         return a.name.localeCompare(b.name);
       });
+      // ============================================================
+// NUEVO REPORTE DIARIO CON EXCELJS
+// ============================================================
+
+if (tipoPeriodoReporte === 'dia') {
+  await generarReporteDiarioExcel({
+    fecha: fechaHoy,
+    alcanceTexto: tituloAlcance,
+    estudiantes: listaExportar,
+    asistenciasPorFecha: asistencias,
+    nombreArchivo:
+      `Asistencia_Diaria_${fechaHoy}_${alcanceReporte.toUpperCase()}.xlsx`
+  });
+
+  return;
+}
 
       let datos = [];
       let nombreArchivo = '';
