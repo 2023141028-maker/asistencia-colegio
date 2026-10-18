@@ -337,3 +337,339 @@ const aplicarEstiloInstitucional = ({
     footer: 0.2
   };
 };
+// ============================================================
+// GENERAR REPORTE DIARIO
+// ============================================================
+
+export const generarReporteDiarioExcel = async ({
+  fecha,
+  alcanceTexto,
+  estudiantes,
+  asistenciasPorFecha,
+  nombreArchivo = `Reporte_Asistencia_${fecha}.xlsx`
+}) => {
+  const ExcelJS = await cargarExcelJS();
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = 'I.E.E. Daniel Hernández';
+  workbook.created = new Date();
+
+  const hoja = workbook.addWorksheet('Reporte Diario');
+
+  // ==========================================================
+  // INFORMACIÓN GENERAL
+  // ==========================================================
+
+  hoja.addRow([
+    'REPORTE DIARIO DE ASISTENCIA ESTUDIANTIL'
+  ]);
+
+  hoja.addRow([
+    'Institución:',
+    'I.E.E. Daniel Hernández'
+  ]);
+
+  hoja.addRow([
+    'Fecha:',
+    fecha
+  ]);
+
+  hoja.addRow([
+    'Alcance:',
+    alcanceTexto || 'Todos los estudiantes'
+  ]);
+
+  hoja.addRow([
+    'Total Alumnos:',
+    estudiantes.length
+  ]);
+
+  // Fila vacía
+  hoja.addRow([]);
+
+  // ==========================================================
+  // ENCABEZADOS
+  // ==========================================================
+
+  const encabezados = [
+    'N°',
+    'DNI',
+    'APELLIDOS Y NOMBRES',
+    'GRADO',
+    'SECCIÓN',
+    'ESTADO DIRECCIÓN',
+    'REGISTRADO POR DIRECCIÓN',
+    'ESTADO DOCENTE',
+    'REGISTRADO POR DOCENTE',
+    'HORA REGISTRO',
+    'OBSERVACIÓN',
+    'CELULAR APODERADO'
+  ];
+
+  hoja.addRow(encabezados);
+
+  const filaEncabezado = 7;
+
+  // ==========================================================
+  // DATOS
+  // ==========================================================
+
+  const registrosDia =
+    asistenciasPorFecha?.[fecha] || {};
+
+  estudiantes.forEach((alumno, indice) => {
+    const registro =
+      registrosDia[String(alumno.id)] ||
+      registrosDia[alumno.id] ||
+      null;
+
+    const estadoDireccion =
+      registro?.status
+        ? obtenerNombreEstadoExcel(registro.status)
+        : 'SIN REGISTRO';
+
+    const estadoDocente =
+      registro?.docenteStatus
+        ? obtenerNombreEstadoExcel(
+            registro.docenteStatus
+          )
+        : 'SIN REGISTRO';
+
+    const registradoDireccion =
+      registro?.registradoPor ||
+      'SIN REGISTRO';
+
+    const registradoDocente =
+      registro?.registradoDocentePor ||
+      'SIN REGISTRO';
+
+    const horaRegistro =
+      registro?.time ||
+      'SIN REGISTRO';
+
+    let observacion = 'SIN REGISTRO';
+
+    if (
+      registro?.registradoPor ===
+      'Sistema - sin control previo'
+    ) {
+      observacion =
+        'DOCENTE REGISTRÓ PRIMERO';
+    } else if (
+      registro?.status &&
+      registro?.docenteStatus
+    ) {
+      if (
+        registro.status ===
+        registro.docenteStatus
+      ) {
+        observacion = 'COINCIDE';
+      } else {
+        observacion =
+          'REVISAR DIFERENCIA';
+      }
+    } else if (
+      registro?.docenteStatus &&
+      !registro?.status
+    ) {
+      observacion =
+        'PENDIENTE DIRECCIÓN';
+    } else if (
+      registro?.status &&
+      !registro?.docenteStatus
+    ) {
+      observacion =
+        'PENDIENTE DOCENTE';
+    }
+
+    hoja.addRow([
+      indice + 1,
+      alumno.dni || '',
+      alumno.name || '',
+      alumno.grade || '',
+      alumno.section || '',
+      estadoDireccion,
+      registradoDireccion,
+      estadoDocente,
+      registradoDocente,
+      horaRegistro,
+      observacion,
+      alumno.phone || ''
+    ]);
+  });
+
+  // ==========================================================
+  // COMBINAR CELDAS SUPERIORES
+  // ==========================================================
+
+  hoja.mergeCells(
+    1,
+    1,
+    1,
+    encabezados.length
+  );
+
+  hoja.mergeCells(
+    2,
+    2,
+    2,
+    5
+  );
+
+  hoja.mergeCells(
+    3,
+    2,
+    3,
+    4
+  );
+
+  hoja.mergeCells(
+    4,
+    2,
+    4,
+    6
+  );
+
+  // ==========================================================
+  // ANCHO DE COLUMNAS
+  // ==========================================================
+
+  hoja.columns = [
+    { width: 7 },
+    { width: 14 },
+    { width: 35 },
+    { width: 12 },
+    { width: 12 },
+    { width: 20 },
+    { width: 28 },
+    { width: 20 },
+    { width: 28 },
+    { width: 16 },
+    { width: 24 },
+    { width: 18 }
+  ];
+
+  // ==========================================================
+  // ESTILO GENERAL
+  // ==========================================================
+
+  aplicarEstiloInstitucional({
+    hoja,
+    filaEncabezado,
+    ultimaFila: hoja.rowCount,
+    ultimaColumna: encabezados.length
+  });
+
+  // ==========================================================
+  // COLOR SEGÚN ESTADO
+  // ==========================================================
+
+  const colorearEstado = (celda) => {
+    const valor = String(
+      celda.value || ''
+    ).toUpperCase();
+
+    if (valor === 'PRESENTE') {
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFE2F0D9'
+        }
+      };
+    }
+
+    if (valor === 'TARDANZA') {
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFFFF2CC'
+        }
+      };
+    }
+
+    if (valor === 'FALTA') {
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFF4CCCC'
+        }
+      };
+    }
+
+    if (valor === 'EVASIÓN') {
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFD9D2E9'
+        }
+      };
+    }
+
+    if (valor === 'PERMISO') {
+      celda.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFD9EAF7'
+        }
+      };
+    }
+
+    celda.alignment = {
+      vertical: 'middle',
+      horizontal: 'center',
+      wrapText: true
+    };
+  };
+
+  for (
+    let fila = filaEncabezado + 1;
+    fila <= hoja.rowCount;
+    fila++
+  ) {
+    colorearEstado(
+      hoja.getCell(fila, 6)
+    );
+
+    colorearEstado(
+      hoja.getCell(fila, 8)
+    );
+
+    const celdaObservacion =
+      hoja.getCell(fila, 11);
+
+    if (
+      celdaObservacion.value ===
+      'REVISAR DIFERENCIA'
+    ) {
+      celdaObservacion.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: {
+          argb: 'FFFFC7CE'
+        }
+      };
+
+      celdaObservacion.font = {
+        bold: true,
+        color: {
+          argb: 'FF9C0006'
+        }
+      };
+    }
+  }
+
+  // ==========================================================
+  // DESCARGAR
+  // ==========================================================
+
+  await descargarArchivoExcel(
+    workbook,
+    nombreArchivo
+  );
+};
