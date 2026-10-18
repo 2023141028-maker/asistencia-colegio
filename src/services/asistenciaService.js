@@ -67,3 +67,94 @@ export const guardarAsistenciaDocente = async ({
 
   return true;
 };
+export const registrarIngresoQR = async ({
+  alumno,
+  fecha,
+  horaRegistro,
+  dispositivo = 'PUERTA'
+}) => {
+  const estudianteId = String(alumno.id);
+
+  const { data: existente, error: errorConsulta } = await supabase
+    .from('asistencias')
+    .select(`
+      id,
+      estado,
+      registrado_por,
+      created_at
+    `)
+    .eq('fecha', fecha)
+    .eq('estudiante_id', estudianteId)
+    .maybeSingle();
+
+  if (errorConsulta) {
+    throw errorConsulta;
+  }
+
+  if (existente?.registrado_por?.includes('QR')) {
+    return {
+      yaRegistrado: true,
+      mensaje: 'ASISTENCIA YA REGISTRADA HOY',
+      estado: existente.estado
+    };
+  }
+
+  const [hora, minuto] = horaRegistro
+    .split(':')
+    .map(Number);
+
+  const minutosActuales =
+    (hora * 60) + minuto;
+
+  const limiteIngreso = 8 * 60;
+
+  const estado =
+    minutosActuales <= limiteIngreso
+      ? 'P'
+      : 'T';
+
+  const registradoPor =
+    `CONTROL DE INGRESO QR - ${dispositivo}`;
+
+  if (existente) {
+    const { error } = await supabase
+      .from('asistencias')
+      .update({
+        estado,
+        registrado_por: registradoPor,
+        estudiante_nombre: alumno.name,
+        seccion: alumno.section
+      })
+      .eq('id', existente.id);
+
+    if (error) {
+      throw error;
+    }
+  } else {
+    const { error } = await supabase
+      .from('asistencias')
+      .insert([
+        {
+          fecha,
+          estudiante_id: estudianteId,
+          estudiante_nombre: alumno.name,
+          seccion: alumno.section,
+          estado,
+          registrado_por: registradoPor
+        }
+      ]);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  return {
+    yaRegistrado: false,
+    estado,
+    mensaje:
+      estado === 'P'
+        ? 'INGRESO REGISTRADO - PRESENTE'
+        : 'INGRESO REGISTRADO - TARDANZA'
+  };
+};
