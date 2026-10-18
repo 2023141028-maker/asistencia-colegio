@@ -70,3 +70,74 @@ export const obtenerDiasMesExcel = (fechaStr) => {
 
   return diasHabiles;
 };
+
+// ============================================================
+// CARGAR EXCELJS EN EL NAVEGADOR
+// ============================================================
+
+const cargarExcelJS = () => {
+  return new Promise((resolve, reject) => {
+    // Si ya está cargado, lo reutilizamos
+    if (window.ExcelJS) {
+      resolve(window.ExcelJS);
+      return;
+    }
+
+    const script = document.createElement('script');
+
+    script.src =
+      'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+
+    script.onload = () => {
+      if (window.ExcelJS) {
+        resolve(window.ExcelJS);
+      } else {
+        reject(
+          new Error('ExcelJS no pudo iniciarse correctamente.')
+        );
+      }
+    };
+
+    script.onerror = () => {
+      reject(
+        new Error('No se pudo cargar la librería ExcelJS.')
+      );
+    };
+
+    document.head.appendChild(script);
+  });
+};
+
+// ============================================================
+// DESCARGAR ARCHIVO .XLSX
+// ============================================================
+
+const descargarArchivoExcel = async (
+  workbook,
+  nombreArchivo
+) => {
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob(
+    [buffer],
+    {
+      type:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const enlace = document.createElement('a');
+
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+
+  document.body.appendChild(enlace);
+
+  enlace.click();
+
+  document.body.removeChild(enlace);
+
+  URL.revokeObjectURL(url);
+};
