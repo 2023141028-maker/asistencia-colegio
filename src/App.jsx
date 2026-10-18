@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
-import { guardarAsistenciaDocente } from './services/asistenciaService';
+import {guardarAsistenciaDocente, registrarIngresoQR} from './services/asistenciaService';
+import EscanerQR from './components/EscanerQR';
 import { generarReporteDiarioExcel } from './services/excelService';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
@@ -415,6 +416,25 @@ export default function App() {
   const esDirector = usuarioAutenticado?.rol === 'director';
   const esAuxiliar = usuarioAutenticado?.rol === 'auxiliar';
   const esDocente = usuarioAutenticado?.rol === 'docente';
+
+  const manejarRegistroIngresoQR = async (alumno) => {
+  const ahora = new Date();
+
+  const horaRegistro = ahora.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  
+    const resultado = await registrarIngresoQR({
+      alumno,
+      fecha: fechaHoy,
+      horaRegistro,
+      dispositivo: 'PUERTA PRINCIPAL'
+    });
+  
+    return resultado;
+  };
 
   const todasLasAulasColegio = useMemo(() => {
     const mapa = new Map();
