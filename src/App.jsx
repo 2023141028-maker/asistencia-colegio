@@ -2076,9 +2076,20 @@ if (tipoPeriodoReporte === 'dia') {
               className={`flex-1 py-3 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
                 vistaDirector === 'asistencia' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
               }`}
-            >
+                          >
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> 
               <span>Control de Asistencia</span>
+            </button>
+            <button 
+              onClick={() => setVistaDirector('qr')}
+              className={`flex-1 py-3 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                vistaDirector === 'qr'
+                  ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-800'
+              }`}
+            >
+              <Smartphone className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>QR Ingreso</span>
             </button>
 
             <button 
@@ -2558,6 +2569,18 @@ if (tipoPeriodoReporte === 'dia') {
             </div>
           </div>
         )}
+
+        {/* =========================================================================
+    VISTA: CONTROL DE INGRESO QR
+   ========================================================================= */}
+        {esDirector && vistaDirector === 'qr' && (
+              <div className="space-y-3.5">
+                <EscanerQR
+                  estudiantes={estudiantes}
+                  onRegistrarIngreso={manejarRegistroIngresoQR}
+                />
+              </div>
+            )}
 
         {/* =========================================================================
             VISTA 2: DESCARGAS EXCEL
