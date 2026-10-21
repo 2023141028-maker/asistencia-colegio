@@ -346,7 +346,14 @@ const contarEstadosAlumno = ({ alumno, dias, asistenciasPorFecha }) => {
       asistenciasPorFecha?.[fecha]?.[String(alumno.id)] ||
       asistenciasPorFecha?.[fecha]?.[alumno.id];
 
-    const estado = registro?.status || '-';
+    const esRegistroRealDireccion =
+      registro?.status &&
+      registro?.registradoPor !== 'Sistema - sin control previo';
+
+    const estado = esRegistroRealDireccion
+      ? registro.status
+      : '-';
+
     estadosPorDia.push(estado);
 
     if (conteo[estado] !== undefined) {
@@ -409,7 +416,14 @@ export const generarReporteDiarioExcel = async ({
       registrosDia[alumno.id] ||
       null;
 
-    const estadoHoy = registroHoy?.status || '';
+    const esRegistroRealDireccion =
+      registroHoy?.status &&
+      registroHoy?.registradoPor !== 'Sistema - sin control previo';
+
+    const estadoHoy = esRegistroRealDireccion
+      ? registroHoy.status
+      : '';
+
     const nombreEstado = estadoHoy
       ? obtenerNombreEstadoExcel(estadoHoy)
       : 'SIN REGISTRO';
@@ -471,7 +485,7 @@ export const generarReporteDiarioExcel = async ({
       alumno.name || '',
       alumno.grade || '',
       alumno.section || '',
-      registroHoy?.time || '--:--',
+      esRegistroRealDireccion ? (registroHoy?.time || '--:--') : '--:--',
       nombreEstado,
       observaciones.join(' / '),
       accion
