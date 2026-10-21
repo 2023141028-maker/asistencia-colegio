@@ -439,9 +439,14 @@ export default function App() {
   alumnosAula.forEach(e => {
     const registro = diaActual[e.id];
 
+    const estadoDireccionReal =
+      registro?.registradoPor !== 'Sistema - sin control previo'
+        ? (registro?.status || '')
+        : '';
+
     inicial[e.id] = esDocente
-      ? (registro?.docenteStatus || registro?.status || 'P')
-      : (registro?.status || 'P');
+      ? (registro?.docenteStatus || estadoDireccionReal || '')
+      : estadoDireccionReal;
   });
 
   setAsistenciaAula(inicial);
@@ -553,12 +558,14 @@ export default function App() {
   };
 
   const alternarEstadoAlumno = (id) => {
-    const actual = asistenciaAula[id] || 'P';
-    const siguiente = 
+    const actual = asistenciaAula[id] || '';
+    const siguiente =
+      actual === '' ? 'P' :
       actual === 'P' ? 'T' :
       actual === 'T' ? 'F' :
       actual === 'F' ? 'E' :
       actual === 'E' ? 'J' : 'P';
+
     cambiarEstadoAlumno(id, siguiente);
   };
 
@@ -646,9 +653,26 @@ export default function App() {
   return;
 }
 
+    const alumnosSinRegistro = alumnosAula.filter(
+      alumno => !['P', 'T', 'F', 'E', 'J'].includes(asistenciaAula[alumno.id])
+    );
+
+    if (alumnosSinRegistro.length > 0) {
+      alert(
+        'Faltan registrar ' + alumnosSinRegistro.length +
+        ' estudiante(s). Los alumnos sin registro no se marcarán automáticamente como presentes.'
+      );
+      return;
+    }
+
     const nuevoDia = { ...(asistencias[fechaHoy] || {}) };
     Object.keys(asistenciaAula).forEach(id => {
-      nuevoDia[id] = { status: asistenciaAula[id], time: hora };
+      nuevoDia[id] = {
+        ...(nuevoDia[id] || {}),
+        status: asistenciaAula[id],
+        time: hora,
+        registradoPor: usuarioAutenticado?.nombre || 'Dirección/Auxiliar'
+      };
     });
     const asistenciasActualizadas = { ...asistencias, [fechaHoy]: nuevoDia };
     setAsistencias(asistenciasActualizadas);
@@ -659,7 +683,7 @@ export default function App() {
       estudiante_id: String(alumno.id),
       estudiante_nombre: alumno.name,
       seccion: seccionCompleta,
-      estado: asistenciaAula[alumno.id] || 'P',
+      estado: asistenciaAula[alumno.id],
       registrado_por: usuarioAutenticado?.nombre || 'Docente/Auxiliar'
     }));
 
@@ -762,20 +786,54 @@ export default function App() {
     let evasionesHoy = 0;
     let permisosHoy = 0;
 
+    let sinRegistroHoy = 0;
+
     estudiantes.forEach(e => {
-      const st = dia[e.id]?.status || 'P';
+      const registro = dia[e.id];
+      const esRegistroRealDireccion =
+        registro?.status &&
+        registro?.registradoPor !== 'Sistema - sin control previo';
+
+      if (!esRegistroRealDireccion) {
+        sinRegistroHoy++;
+        return;
+      }
+
+      const st = registro.status;
+
       if (st === 'F') faltasHoy++;
       else if (st === 'T') tardanzasHoy++;
       else if (st === 'E') evasionesHoy++;
       else if (st === 'J') permisosHoy++;
-      else presentesHoy++;
+      else if (st === 'P') presentesHoy++;
     });
 
-    const faltaronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'F');
-    const evadieronHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'E');
-    const permisoHoyLista = estudiantes.filter(e => dia[e.id]?.status === 'J');
+    const faltaronHoyLista = estudiantes.filter(e => {
+      const registro = dia[e.id];
+      return registro?.registradoPor !== 'Sistema - sin control previo' && registro?.status === 'F';
+    });
 
-    return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista };
+    const evadieronHoyLista = estudiantes.filter(e => {
+      const registro = dia[e.id];
+      return registro?.registradoPor !== 'Sistema - sin control previo' && registro?.status === 'E';
+    });
+
+    const permisoHoyLista = estudiantes.filter(e => {
+      const registro = dia[e.id];
+      return registro?.registradoPor !== 'Sistema - sin control previo' && registro?.status === 'J';
+    });
+
+    return {
+      faltasHoy,
+      tardanzasHoy,
+      presentesHoy,
+      evasionesHoy,
+      permisosHoy,
+      sinRegistroHoy,
+      faltaronHoyLista,
+      evadieronHoyLista,
+      permisoHoyLista
+    };
   }, [asistencias, estudiantes, fechaHoy]);
   const discrepanciasDirector = useMemo(() => {
   const dia = asistencias[fechaHoy] || {};
