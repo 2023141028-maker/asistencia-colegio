@@ -18,6 +18,7 @@ import { guardarUsuario, actualizarUsuario, eliminarUsuario } from './services/u
 import { crearEstudiante, actualizarEstudiante, eliminarEstudiante } from './services/estudianteService';
 import { AULAS_OFICIALES_DH } from './constants/aulas';
 import { conLimiteDeTiempo } from './utils/async';
+import { cargarLibreriaExcel } from './utils/excel';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
