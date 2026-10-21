@@ -2,18 +2,7 @@ import { useState } from 'react';
 import { generarReporteDiarioExcel } from '../services/excelService';
 import { obtenerNombreEstado } from '../utils/estados';
 import { obtenerDiasSemana, obtenerDiasMes } from '../utils/fechas';
-
-const cargarLibreriaExcel = () => {
-  return new Promise((resolve, reject) => {
-    if (window.XLSX) return resolve(window.XLSX);
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
-    script.onload = () => resolve(window.XLSX);
-    script.onerror = () => reject(new Error('No se pudo cargar el procesador de Excel'));
-    document.head.appendChild(script);
-  });
-};
+import { cargarLibreriaExcel } from '../utils/excel';
 
 export default function useReportes({ estudiantes, asistencias, fechaHoy }) {
   // REPORTES EXCEL
