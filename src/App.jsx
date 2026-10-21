@@ -19,13 +19,7 @@ import { AULAS_OFICIALES_DH } from './constants/aulas';
 import { conLimiteDeTiempo } from './utils/async';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
-  MessageCircle, Search, Calendar, School, ShieldAlert, 
-  FileSpreadsheet, Check, Lock, LogOut, UserCheck, Eye, EyeOff, 
-  HelpCircle, X, Download, UserPlus, Trash2, ShieldCheck,
-  Upload, Edit3, Plus, Wifi, WifiOff, Smartphone,
-  CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
-  Loader2, FileText, Settings
+  Users, CheckCircle2, Clock, AlertTriangle, MessageCircle, Calendar, School, FileSpreadsheet, Lock, LogOut, UserCheck, Eye, EyeOff, HelpCircle, X, Upload, WifiOff, Smartphone, Sparkles, KeyRound, Loader2, Settings
 } from 'lucide-react';
 
 export default function App() {
