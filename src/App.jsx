@@ -241,7 +241,7 @@ export default function App() {
   });
 
   // ASISTENCIAS
-  sincronizacion multiusuarios
+  // sincronizacion multiusuarios
     
     try {
       const local = localStorage.getItem('dh_asistencias_v26');
