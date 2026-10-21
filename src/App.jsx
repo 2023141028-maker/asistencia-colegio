@@ -13,6 +13,10 @@ import {
 } from './utils/permisos';
 import { obtenerNombreEstado } from './utils/estados';
 import { guardarUsuario, actualizarUsuario, eliminarUsuario } from './services/usuarioService';
+import { crearEstudiante, actualizarEstudiante, eliminarEstudiante } from './services/estudianteService';
+import { AULAS_OFICIALES_DH, GRADOS_DH } from './constants/aulas';
+import { obtenerDiasSemana, obtenerDiasMes } from './utils/fechas';
+import { conLimiteDeTiempo } from './utils/async';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
@@ -23,52 +27,6 @@ import {
   CalendarRange, Filter, Sparkles, KeyRound, Save, CheckSquare, Square,
   Loader2, FileText, Settings
 } from 'lucide-react';
-
-// Catálogo oficial de las 30 secciones de la I.E.E. "Daniel Hernández"
-const AULAS_OFICIALES_DH = [
-  // 1ro de Secundaria
-  { grade: 'PRIMERO', section: 'RESPONSABILIDAD' },
-  { grade: 'PRIMERO', section: 'HONRADEZ' },
-  { grade: 'PRIMERO', section: 'RESPETO' },
-  { grade: 'PRIMERO', section: 'SOLIDARIDAD' },
-  { grade: 'PRIMERO', section: 'PERSEVERANCIA' },
-  { grade: 'PRIMERO', section: 'LABORIOSIDAD' },
-  // 2do de Secundaria
-  { grade: 'SEGUNDO', section: 'D. A. CARRIÓN' },
-  { grade: 'SEGUNDO', section: 'SAN MARTÍN' },
-  { grade: 'SEGUNDO', section: 'MIGUEL GRAU' },
-  { grade: 'SEGUNDO', section: 'JOSÉ OLAYA' },
-  { grade: 'SEGUNDO', section: 'F. BOLOGNESI' },
-  { grade: 'SEGUNDO', section: 'A. A. CÁCERES' },
-  // 3ro de Secundaria
-  { grade: 'TERCERO', section: 'A. VALDELOMAR' },
-  { grade: 'TERCERO', section: 'C. ALEGRÍA' },
-  { grade: 'TERCERO', section: 'J. C. MARIÁTEGUI' },
-  { grade: 'TERCERO', section: 'C. VALLEJO' },
-  { grade: 'TERCERO', section: 'R. PALMA' },
-  { grade: 'TERCERO', section: 'M. V. LLOSA' },
-  // 4to de Secundaria
-  { grade: 'CUARTO', section: 'N. TESLA' },
-  { grade: 'CUARTO', section: 'R. DESCARTES' },
-  { grade: 'CUARTO', section: 'P. FERMAT' },
-  { grade: 'CUARTO', section: 'I. NEWTON' },
-  { grade: 'CUARTO', section: 'T. ALVA' },
-  { grade: 'CUARTO', section: 'F. GAUSS' },
-  // 5to de Secundaria
-  { grade: 'QUINTO', section: 'SÓCRATES' },
-  { grade: 'QUINTO', section: 'T. MILETO' },
-  { grade: 'QUINTO', section: 'PLATÓN' },
-  { grade: 'QUINTO', section: 'ARISTÓTELES' },
-  { grade: 'QUINTO', section: 'PITÁGORAS' },
-  { grade: 'QUINTO', section: 'I. KANT' }
-];
-
-const conLimiteDeTiempo = (promesa, ms = 2500) => {
-  return Promise.race([
-    promesa,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_CONEXION')), ms))
-  ]);
-};
 
 const cargarLibreriaExcel = () => {
   return new Promise((resolve, reject) => {
@@ -880,39 +838,6 @@ export default function App() {
   const [filtroGradoReporte, setFiltroGradoReporte] = useState('PRIMERO');
   const [filtroSeccionReporte, setFiltroSeccionReporte] = useState('RESPONSABILIDAD');
 
-  const obtenerDiasSemana = (fechaStr) => {
-    const d = new Date(fechaStr + 'T00:00:00');
-    const diaSem = d.getDay();
-    const diffALunes = diaSem === 0 ? -6 : 1 - diaSem;
-    const lunes = new Date(d);
-    lunes.setDate(d.getDate() + diffALunes);
-    
-    const dias = [];
-    for (let i = 0; i < 5; i++) {
-      const temp = new Date(lunes);
-      temp.setDate(lunes.getDate() + i);
-      dias.push(temp.toISOString().split('T')[0]);
-    }
-    return dias;
-  };
-
-  const obtenerDiasMes = (fechaStr) => {
-    const [anioStr, mesStr] = fechaStr.split('-');
-    const anio = parseInt(anioStr, 10);
-    const mes = parseInt(mesStr, 10);
-    const totalDias = new Date(anio, mes, 0).getDate();
-    const diasHabiles = [];
-
-    for (let d = 1; d <= totalDias; d++) {
-      const f = `${anio}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dt = new Date(f + 'T00:00:00');
-      if (dt.getDay() >= 1 && dt.getDay() <= 5) {
-        diasHabiles.push(f);
-      }
-    }
-    return diasHabiles;
-  };
-
   const generarReporteExcelAvanzado = async () => {
     if (estudiantes.length === 0) {
       alert('El padrón escolar no tiene alumnos registrados.');
@@ -1531,7 +1456,7 @@ if (tipoPeriodoReporte === 'dia') {
     setTimeout(() => setMensajeAdmin(''), 3000);
 
     try {
-      await supabase.from('estudiantes').insert([nuevo]);
+      await crearEstudiante(nuevo);
     } catch (err) {
       console.warn('Estudiante guardado localmente.');
     }
@@ -1543,7 +1468,7 @@ if (tipoPeriodoReporte === 'dia') {
       setEstudiantes(restantes);
       localStorage.setItem('dh_estudiantes_v26', JSON.stringify(restantes));
       try {
-        await supabase.from('estudiantes').delete().eq('id', id);
+        await eliminarEstudiante(id);
       } catch (e) {}
     }
   };
@@ -1583,13 +1508,7 @@ if (tipoPeriodoReporte === 'dia') {
     localStorage.setItem('dh_estudiantes_v26', JSON.stringify(estudiantesActualizados));
 
     try {
-      await supabase.from('estudiantes').update({
-        dni: estudianteActualizado.dni,
-        name: estudianteActualizado.name,
-        grade: estudianteActualizado.grade,
-        section: estudianteActualizado.section,
-        phone: estudianteActualizado.phone
-      }).eq('id', alumnoEditando.id);
+      await actualizarEstudiante(estudianteActualizado);
       setMensajeAdmin('✅ Datos del estudiante actualizados.');
       setTimeout(() => setMensajeAdmin(''), 3000);
     } catch (err) {
@@ -2835,7 +2754,7 @@ if (tipoPeriodoReporte === 'dia') {
                       </div>
 
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'].map(g => (
+                        {GRADOS_DH.map(g => (
                           <button
                             type="button"
                             key={g}
@@ -3173,7 +3092,7 @@ if (tipoPeriodoReporte === 'dia') {
                   </div>
 
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'].map(g => (
+                    {GRADOS_DH.map(g => (
                       <button
                         type="button"
                         key={g}
