@@ -11,6 +11,7 @@ const EscanerQR = ({
   const [procesando, setProcesando] = useState(false);
 
   const [camaraActiva, setCamaraActiva] = useState(false);
+  const [horaUltimoRegistro, setHoraUltimoRegistro] = useState('');
 
   const lectorRef = useRef(null);
   const ultimoCodigoRef = useRef('');
@@ -44,6 +45,13 @@ const EscanerQR = ({
       setProcesando(true);
 
       const resultado = await onRegistrarIngreso(alumno);
+      const horaActual = new Date().toLocaleTimeString('es-PE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
+      setHoraUltimoRegistro(horaActual);
 
       setMensaje(
         resultado?.mensaje ||
@@ -138,7 +146,7 @@ const EscanerQR = ({
 
               setTimeout(() => {
                 ultimoCodigoRef.current = '';
-              }, 1500);
+              }, 1800);
             },
 
             () => {
@@ -305,6 +313,11 @@ const EscanerQR = ({
           <p className="text-xs text-slate-500 mt-1">
             DNI: {alumnoEncontrado.dni}
           </p>
+          {horaUltimoRegistro && (
+          <p className="text-sm font-bold text-emerald-700 mt-2">
+            Hora de ingreso: {horaUltimoRegistro}
+          </p>
+        )}
 
         </div>
       )}
