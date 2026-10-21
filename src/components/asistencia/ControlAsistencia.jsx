@@ -80,7 +80,11 @@ export default function ControlAsistencia({ ctx }) {
                 {estudiantesFiltradosBuscador.length > 0 && (
                   <div className="mt-2.5 space-y-2 border-t border-slate-100 pt-2 max-h-72 overflow-y-auto">
                     {estudiantesFiltradosBuscador.map(alumno => {
-                      const st = asistencias[fechaHoy]?.[alumno.id]?.status || 'P';
+                      const registro = asistencias[fechaHoy]?.[alumno.id];
+                      const st =
+                        registro?.registradoPor === 'Sistema - sin control previo'
+                          ? ''
+                          : (registro?.status || '');
                       return (
                         <div key={alumno.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2 shadow-sm">
                           <div className="min-w-0">
@@ -152,7 +156,7 @@ export default function ControlAsistencia({ ctx }) {
             )}
 
             {/* CONTADORES GENERALES */}
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
               <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-sm text-center">
                 <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase">Presentes</p>
                 <p className="text-base sm:text-xl font-black text-emerald-600">{metricasDirector.presentesHoy}</p>
@@ -176,6 +180,11 @@ export default function ControlAsistencia({ ctx }) {
               <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-sky-300 shadow-sm text-center">
                 <p className="text-[8px] sm:text-[9px] font-bold text-sky-600 uppercase">Permisos</p>
                 <p className="text-base sm:text-xl font-black text-sky-700">{metricasDirector.permisosHoy}</p>
+              </div>
+
+              <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-300 shadow-sm text-center">
+                <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase">Sin registro</p>
+                <p className="text-base sm:text-xl font-black text-slate-600">{metricasDirector.sinRegistroHoy}</p>
               </div>
             </div>
             
@@ -339,21 +348,23 @@ export default function ControlAsistencia({ ctx }) {
                 </div>
               ) : (
                 alumnosAula.map((alumno, index) => {
-                  const estado = asistenciaAula[alumno.id] || 'P';
+                  const estado = asistenciaAula[alumno.id] || '';
                   return (
                     <div 
                       key={alumno.id}
                       onClick={() => alternarEstadoAlumno(alumno.id)}
                       className={`cursor-pointer select-none p-3 rounded-2xl border-2 transition-all flex items-center justify-between shadow-sm active:scale-[0.98] ${
-                        estado === 'P' 
-                          ? 'bg-emerald-50/80 border-emerald-300' 
-                          : estado === 'T' 
-                            ? 'bg-amber-50/80 border-amber-400' 
+                        estado === 'P'
+                          ? 'bg-emerald-50/80 border-emerald-300'
+                          : estado === 'T'
+                            ? 'bg-amber-50/80 border-amber-400'
                             : estado === 'F'
                               ? 'bg-rose-50/80 border-rose-400'
                               : estado === 'E'
                                 ? 'bg-purple-50/90 border-purple-400 shadow-purple-100'
-                                : 'bg-sky-50/90 border-sky-400 shadow-sky-100'
+                                : estado === 'J'
+                                  ? 'bg-sky-50/90 border-sky-400 shadow-sky-100'
+                                  : 'bg-slate-50 border-slate-300'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -367,6 +378,11 @@ export default function ControlAsistencia({ ctx }) {
                       </div>
 
                       <div className="shrink-0 flex items-center gap-1.5">
+                        {!estado && (
+                          <div className="bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-xl text-[10px] font-black shadow-sm">
+                            SIN REGISTRO
+                          </div>
+                        )}
                         {estado === 'P' && (
                           <div className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-sm">
                             <CheckCircle2 className="w-3.5 h-3.5" /> P
