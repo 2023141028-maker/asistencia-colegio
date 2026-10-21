@@ -32,7 +32,6 @@ export default function ControlAsistencia({ ctx }) {
     guardadoExitoso,
     mensajeGuardado,
     guardarAsistenciaAula,
-    evadieronHoyLista,
     enviarWhatsApp
   } = ctx;
 
