@@ -142,26 +142,83 @@ const agregarCabeceraInstitucional = ({
   totalAlumnos,
   ultimaColumna
 }) => {
-  hoja.addRow([titulo]);
+  // ----------------------------------------------------------
+  // TÍTULO PRINCIPAL
+  // ----------------------------------------------------------
   hoja.mergeCells(1, 1, 1, ultimaColumna);
 
   const tituloCelda = hoja.getCell(1, 1);
-  tituloCelda.font = { bold: true, size: 16, color: { argb: COLORES.blanco } };
-  tituloCelda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORES.azul } };
-  tituloCelda.alignment = { horizontal: 'center', vertical: 'middle' };
+  tituloCelda.value = titulo;
+  tituloCelda.font = {
+    bold: true,
+    size: 16,
+    color: { argb: COLORES.blanco }
+  };
+  tituloCelda.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: COLORES.azul }
+  };
+  tituloCelda.alignment = {
+    horizontal: 'center',
+    vertical: 'middle'
+  };
   hoja.getRow(1).height = 30;
 
-  hoja.addRow(['Institución:', 'I.E.E. DANIEL HERNÁNDEZ']);
-  hoja.addRow(['Período:', subtitulo]);
-  hoja.addRow(['Alcance:', alcanceTexto || 'GENERAL - TODOS LOS GRADOS']);
-  hoja.addRow(['Total estudiantes:', totalAlumnos]);
+  // ----------------------------------------------------------
+  // BLOQUE INSTITUCIONAL
+  // Etiquetas a la izquierda y valores con mayor espacio.
+  // ----------------------------------------------------------
+  const filasInfo = [
+    ['Institución:', 'I.E.E. DANIEL HERNÁNDEZ'],
+    ['Período:', subtitulo],
+    ['Alcance:', alcanceTexto || 'GENERAL - TODOS LOS GRADOS'],
+    ['Total estudiantes:', totalAlumnos]
+  ];
 
-  for (let fila = 2; fila <= 5; fila++) {
-    hoja.getCell(fila, 1).font = { bold: true, color: { argb: COLORES.azul } };
-    hoja.getRow(fila).height = 20;
-  }
+  filasInfo.forEach(([etiqueta, valor], indice) => {
+    const fila = indice + 2;
 
-  hoja.addRow([]);
+    // Etiqueta ocupa A:B
+    hoja.mergeCells(fila, 1, fila, 2);
+
+    // Valor ocupa C hasta el final de la cabecera,
+    // asegurando que textos largos no se corten.
+    hoja.mergeCells(fila, 3, fila, ultimaColumna);
+
+    const celdaEtiqueta = hoja.getCell(fila, 1);
+    const celdaValor = hoja.getCell(fila, 3);
+
+    celdaEtiqueta.value = etiqueta;
+    celdaValor.value = valor;
+
+    celdaEtiqueta.font = {
+      bold: true,
+      size: 11,
+      color: { argb: COLORES.azul }
+    };
+
+    celdaValor.font = {
+      size: 11,
+      color: { argb: COLORES.textoOscuro }
+    };
+
+    celdaEtiqueta.alignment = {
+      horizontal: 'left',
+      vertical: 'middle'
+    };
+
+    celdaValor.alignment = {
+      horizontal: 'left',
+      vertical: 'middle',
+      wrapText: false
+    };
+
+    hoja.getRow(fila).height = 21;
+  });
+
+  // Línea vacía antes de la tabla
+  hoja.getRow(6).height = 8;
 };
 
 const estilizarCabeceraTabla = (hoja, filaEncabezado) => {
