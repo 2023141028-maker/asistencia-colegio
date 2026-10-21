@@ -119,7 +119,7 @@ export default function PanelGestion({ ctx }) {
                 <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
                   <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-2.5 text-xs">
                     <UserPlus className="w-4 h-4" />
-                    <h3>Registrar Nuevo Docente o Auxiliar de Educación</h3>
+                    <h3>Registrar Personal del Sistema</h3>
                   </div>
 
                   <form onSubmit={registrarPersonal} className="space-y-2.5">
@@ -159,7 +159,13 @@ export default function PanelGestion({ ctx }) {
 
                     <input
                       type="text"
-                      placeholder={nuevoRolPersonal === 'auxiliar' ? "Nombre del Auxiliar (ej: Ronald Alarcón)" : "Nombre del Docente y Área (ej: Ana Yance - COM)"}
+                      placeholder={
+                        nuevoRolPersonal === 'auxiliar'
+                          ? 'Nombre del Auxiliar'
+                          : nuevoRolPersonal === 'subdirector'
+                            ? 'Nombre del Subdirector'
+                            : 'Nombre del Docente y Área'
+                      }
                       value={nuevoNombreDocente}
                       onChange={(e) => setNuevoNombreDocente(e.target.value)}
                       required
@@ -185,6 +191,7 @@ export default function PanelGestion({ ctx }) {
                       />
                     </div>
 
+                    {nuevoRolPersonal !== 'subdirector' && (
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-[10px] font-bold text-slate-700 uppercase">
@@ -234,6 +241,7 @@ export default function PanelGestion({ ctx }) {
                         })}
                       </div>
                     </div>
+                    )}
 
                     <button
                       type="submit"
@@ -526,6 +534,7 @@ export default function PanelGestion({ ctx }) {
                   </div>
                 </div>
 
+                {editRolPersonal !== 'subdirector' && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-slate-700 uppercase">
@@ -572,6 +581,7 @@ export default function PanelGestion({ ctx }) {
                     })}
                   </div>
                 </div>
+                )}
 
                 <div className="flex gap-2 pt-2">
                   <button
