@@ -3,6 +3,16 @@ import { supabase } from './supabase';
 import {guardarAsistenciaDocente, registrarIngresoQR} from './services/asistenciaService';
 import EscanerQR from './components/EscanerQR';
 import { generarReporteDiarioExcel } from './services/excelService';
+import {
+  esDirector as usuarioEsDirector,
+  esSubdirector as usuarioEsSubdirector,
+  esAuxiliar as usuarioEsAuxiliar,
+  esDocente as usuarioEsDocente,
+  esDireccion as usuarioEsDireccion,
+  obtenerAulasPermitidas
+} from './utils/permisos';
+import { obtenerNombreEstado } from './utils/estados';
+import { guardarUsuario, actualizarUsuario, eliminarUsuario } from './services/usuarioService';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, XCircle, AlertTriangle, Phone, 
@@ -241,8 +251,7 @@ export default function App() {
   });
 
   // ASISTENCIAS
-  // sincronizacion multiusuarios
-    
+  const [asistencias, setAsistencias] = useState(() => {
     try {
       const local = localStorage.getItem('dh_asistencias_v26');
       return local ? JSON.parse(local) : {};
@@ -250,9 +259,8 @@ export default function App() {
       return {};
     }
   });
-  useAsistenciasRealtime({
-    setAsistencias
-  });
+
+  useAsistenciasRealtime({ setAsistencias });
 
   // CARGA INICIAL DESDE SUPABASE
   useEffect(() => {
@@ -352,14 +360,7 @@ export default function App() {
 
     try {
       await conLimiteDeTiempo(
-        supabase.from('usuarios').upsert([{
-          id: directorNuevo.id,
-          usuario: directorNuevo.usuario,
-          clave: directorNuevo.clave,
-          rol: directorNuevo.rol,
-          nombre: directorNuevo.nombre,
-          aulas_asignadas: []
-        }]),
+        guardarUsuario(directorNuevo),
         3000
       );
     } catch (err) {
@@ -418,9 +419,17 @@ export default function App() {
     }
   };
 
-  const esDirector = usuarioAutenticado?.rol === 'director';
-  const esAuxiliar = usuarioAutenticado?.rol === 'auxiliar';
-  const esDocente = usuarioAutenticado?.rol === 'docente';
+  const esDirector = usuarioEsDirector(usuarioAutenticado);
+  const esSubdirector = usuarioEsSubdirector(usuarioAutenticado);
+  const esAuxiliar = usuarioEsAuxiliar(usuarioAutenticado);
+  const esDocente = usuarioEsDocente(usuarioAutenticado);
+  const esDireccion = usuarioEsDireccion(usuarioAutenticado);
+
+  useEffect(() => {
+    if (!esDirector && vistaDirector === 'gestion') {
+      setVistaDirector('asistencia');
+    }
+  }, [esDirector, vistaDirector]);
 
   const manejarRegistroIngresoQR = async (alumno) => {
   const ahora = new Date();
@@ -454,11 +463,11 @@ export default function App() {
   }, [estudiantes]);
 
   const aulasPermitidasUsuario = useMemo(() => {
-    if (esDirector) return todasLasAulasColegio;
-    return usuarioAutenticado?.aulasAsignadas && usuarioAutenticado.aulasAsignadas.length > 0
-      ? usuarioAutenticado.aulasAsignadas
-      : (todasLasAulasColegio.length > 0 ? [todasLasAulasColegio[0]] : []);
-  }, [esDirector, todasLasAulasColegio, usuarioAutenticado]);
+    return obtenerAulasPermitidas(
+      usuarioAutenticado,
+      todasLasAulasColegio
+    );
+  }, [usuarioAutenticado, todasLasAulasColegio]);
 
   const [gradoSel, setGradoSel] = useState('');
   const [seccionSel, setSeccionSel] = useState('');
@@ -513,7 +522,12 @@ export default function App() {
     // 1. Guardar de inmediato en memoria local
     setAsistencias(prev => {
       const dia = { ...(prev[fechaHoy] || {}) };
-      dia[alumnoId] = { status: nuevoEstado, time: hora };
+      dia[alumnoId] = {
+        ...(dia[alumnoId] || {}),
+        status: nuevoEstado,
+        time: hora,
+        registradoPor: usuarioAutenticado?.nombre || 'Dirección/Auxiliar'
+      };
       const res = { ...prev, [fechaHoy]: dia };
       localStorage.setItem('dh_asistencias_v26', JSON.stringify(res));
       return res;
@@ -822,15 +836,6 @@ export default function App() {
 
     return { faltasHoy, tardanzasHoy, presentesHoy, evasionesHoy, permisosHoy, faltaronHoyLista, evadieronHoyLista, permisoHoyLista };
   }, [asistencias, estudiantes, fechaHoy]);
-  const obtenerNombreEstado = (estado) => {
-  if (estado === 'P') return 'PRESENTE';
-  if (estado === 'T') return 'TARDANZA';
-  if (estado === 'F') return 'FALTA';
-  if (estado === 'E') return 'EVASIÓN';
-  if (estado === 'J') return 'PERMISO';
-
-  return estado || 'SIN REGISTRO';
-};
   const discrepanciasDirector = useMemo(() => {
   const dia = asistencias[fechaHoy] || {};
 
@@ -1370,15 +1375,17 @@ if (tipoPeriodoReporte === 'dia') {
       return;
     }
 
-    if (aulasSeleccionadasNuevas.length === 0) {
+    if (nuevoRolPersonal !== 'subdirector' && aulasSeleccionadasNuevas.length === 0) {
       setMensajeAdmin('⚠️ Debe marcar al menos un grado o sección para este personal.');
       return;
     }
 
-    const aulasAsignadas = aulasSeleccionadasNuevas.map(clave => {
-      const [grade, section] = clave.split('|');
-      return { grade, section };
-    });
+    const aulasAsignadas = nuevoRolPersonal === 'subdirector'
+      ? []
+      : aulasSeleccionadasNuevas.map(clave => {
+          const [grade, section] = clave.split('|');
+          return { grade, section };
+        });
 
     const nuevo = {
       id: `usr_${Date.now()}`,
@@ -1397,19 +1404,12 @@ if (tipoPeriodoReporte === 'dia') {
     setNuevoUserDocente('');
     setNuevaClaveDocente('');
     setAulasSeleccionadasNuevas([]);
-    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : 'Auxiliar'} registrado exitosamente.`);
+    setMensajeAdmin(`✅ ${nuevoRolPersonal === 'docente' ? 'Docente' : nuevoRolPersonal === 'auxiliar' ? 'Auxiliar' : 'Subdirector'} registrado exitosamente.`);
     setTimeout(() => setMensajeAdmin(''), 3500);
 
     try {
       await conLimiteDeTiempo(
-        supabase.from('usuarios').upsert([{
-          id: nuevo.id,
-          usuario: nuevo.usuario,
-          clave: nuevo.clave,
-          rol: nuevo.rol,
-          nombre: nuevo.nombre,
-          aulas_asignadas: nuevo.aulasAsignadas
-        }]),
+        guardarUsuario(nuevo),
         3000
       );
     } catch (err) {
@@ -1423,7 +1423,7 @@ if (tipoPeriodoReporte === 'dia') {
       setUsuarios(restantes);
       localStorage.setItem('dh_usuarios_v26', JSON.stringify(restantes));
       try {
-        await supabase.from('usuarios').delete().eq('id', id);
+        await eliminarUsuario(id);
       } catch (e) {}
     }
   };
@@ -1466,10 +1466,12 @@ if (tipoPeriodoReporte === 'dia') {
     e.preventDefault();
     if (!personalEditando) return;
 
-    const aulasFormateadas = editAulasPersonal.map(clave => {
-      const [grade, section] = clave.split('|');
-      return { grade, section };
-    });
+    const aulasFormateadas = editRolPersonal === 'subdirector'
+      ? []
+      : editAulasPersonal.map(clave => {
+          const [grade, section] = clave.split('|');
+          return { grade, section };
+        });
 
     const personalActualizado = {
       ...personalEditando,
@@ -1485,13 +1487,7 @@ if (tipoPeriodoReporte === 'dia') {
     localStorage.setItem('dh_usuarios_v26', JSON.stringify(nuevosUsuarios));
 
     try {
-      await supabase.from('usuarios').update({
-        nombre: personalActualizado.nombre,
-        usuario: personalActualizado.usuario,
-        clave: personalActualizado.clave,
-        rol: personalActualizado.rol,
-        aulas_asignadas: personalActualizado.aulasAsignadas
-      }).eq('id', personalEditando.id);
+      await actualizarUsuario(personalActualizado);
 
       setMensajeAdmin('✅ Datos del personal actualizados en la nube.');
       setTimeout(() => setMensajeAdmin(''), 3000);
@@ -2074,7 +2070,7 @@ if (tipoPeriodoReporte === 'dia') {
         </div>
 
         {/* MENÚ DIRECTOR (3 BOTONES DIRECTOS) */}
-        {esDirector && (
+        {esDireccion && (
           <div className="max-w-2xl mx-auto flex text-center border-t border-emerald-600/60 bg-emerald-800/40">
             <button 
               onClick={() => setVistaDirector('asistencia')}
@@ -2107,15 +2103,17 @@ if (tipoPeriodoReporte === 'dia') {
               <span>Descargar Excel</span>
             </button>
 
-            <button 
-              onClick={() => setVistaDirector('gestion')}
-              className={`flex-1 py-3 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                vistaDirector === 'gestion' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
-              }`}
-            >
-              <Settings className="w-4 h-4 text-emerald-300 shrink-0" /> 
-              <span>Personal y Padrón</span>
-            </button>
+            {esDirector && (
+              <button 
+                onClick={() => setVistaDirector('gestion')}
+                className={`flex-1 py-3 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                  vistaDirector === 'gestion' ? 'bg-white text-emerald-800 border-b-2 border-emerald-500 shadow-sm' : 'text-emerald-100 hover:bg-emerald-800'
+                }`}
+              >
+                <Settings className="w-4 h-4 text-emerald-300 shrink-0" /> 
+                <span>Personal y Padrón</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -2147,11 +2145,11 @@ if (tipoPeriodoReporte === 'dia') {
         {/* =========================================================================
             VISTA 1: CONTROL DE ASISTENCIA Y RONDAS
            ========================================================================= */}
-        {((esDirector && vistaDirector === 'asistencia') || esDocente || (esAuxiliar && subVistaAuxiliar === 'salones')) && (
+        {((esDireccion && vistaDirector === 'asistencia') || esDocente || (esAuxiliar && subVistaAuxiliar === 'salones')) && (
           <div className="space-y-3.5">
             
             {/* BUSCADOR UNIVERSAL DIRECTO DEL DIRECTOR (AUTO-GUARDADO) */}
-            {esDirector && (
+            {esDireccion && (
               <div className="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-emerald-500">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1.5">
@@ -2287,7 +2285,7 @@ if (tipoPeriodoReporte === 'dia') {
             </div>
             
             {/* DIFERENCIAS ENTRE DIRECCIÓN Y DOCENTE */}
-            {esDirector && discrepanciasDirector.length > 0 && (
+            {esDireccion && discrepanciasDirector.length > 0 && (
               <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 shadow-sm">
             
                 <div className="flex items-center gap-2 mb-3">
@@ -2416,7 +2414,7 @@ if (tipoPeriodoReporte === 'dia') {
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-bold text-emerald-800 uppercase bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
                   <School className="w-3.5 h-3.5" /> 
-                  {esDirector ? 'Revisión por Salón (Opcional)' : `Mis Salones (${aulasPermitidasUsuario.length})`}
+                  {esDireccion ? 'Revisión por Salón (Opcional)' : `Mis Salones (${aulasPermitidasUsuario.length})`}
                 </span>
                 <span className="text-[11px] text-slate-400 font-semibold">{alumnosAula.length} estudiantes</span>
               </div>
@@ -2578,7 +2576,7 @@ if (tipoPeriodoReporte === 'dia') {
         {/* =========================================================================
     VISTA: CONTROL DE INGRESO QR
    ========================================================================= */}
-        {esDirector && vistaDirector === 'qr' && (
+        {esDireccion && vistaDirector === 'qr' && (
               <div className="space-y-3.5">
                 <EscanerQR
                   estudiantes={estudiantes}
@@ -2590,7 +2588,7 @@ if (tipoPeriodoReporte === 'dia') {
         {/* =========================================================================
             VISTA 2: DESCARGAS EXCEL
            ========================================================================= */}
-        {esDirector && vistaDirector === 'reportes' && (
+        {esDireccion && vistaDirector === 'reportes' && (
           <div className="space-y-3.5">
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-300">
               <div className="flex items-center gap-2 text-emerald-900 font-bold mb-3">
@@ -2766,7 +2764,7 @@ if (tipoPeriodoReporte === 'dia') {
                   <form onSubmit={registrarPersonal} className="space-y-2.5">
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Cargo a desempeñar</label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <button
                           type="button"
                           onClick={() => setNuevoRolPersonal('auxiliar')}
@@ -2785,7 +2783,17 @@ if (tipoPeriodoReporte === 'dia') {
                         >
                           <Users className="w-3.5 h-3.5" /> Docente de Aula
                         </button>
-                      </div>
+                      
+                    <button
+                      type="button"
+                      onClick={() => setNuevoRolPersonal('subdirector')}
+                      className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                        nuevoRolPersonal === 'subdirector' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> Subdirector
+                    </button>
+</div>
                     </div>
 
                     <input
@@ -3091,7 +3099,7 @@ if (tipoPeriodoReporte === 'dia') {
               <form onSubmit={guardarEdicionPersonal} className="space-y-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Cargo / Función</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setEditRolPersonal('auxiliar')}
@@ -3110,7 +3118,17 @@ if (tipoPeriodoReporte === 'dia') {
                     >
                       <Users className="w-3.5 h-3.5" /> Docente de Aula
                     </button>
-                  </div>
+                  
+                    <button
+                      type="button"
+                      onClick={() => setEditRolPersonal('subdirector')}
+                      className={`py-2 px-2 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 ${
+                        editRolPersonal === 'subdirector' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> Subdirector
+                    </button>
+</div>
                 </div>
 
                 <div>
