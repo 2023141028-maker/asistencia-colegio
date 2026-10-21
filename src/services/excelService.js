@@ -374,8 +374,8 @@ export const generarReporteDiarioExcel = async ({
     properties: { tabColor: { argb: COLORES.verde } }
   });
 
-  // Modelo solicitado por Dirección:
-  // listado simple + hora + acumulado semanal de tardanzas + acción.
+  // Formato operativo solicitado por Dirección:
+  // estado del día + observación/acumulado + acción.
   const encabezados = [
     'N°',
     'DNI',
@@ -383,6 +383,7 @@ export const generarReporteDiarioExcel = async ({
     'GRADO',
     'SECCIÓN',
     'HORA',
+    'ESTADO',
     'OBSERVACIONES',
     'ACCIÓN'
   ];
@@ -408,22 +409,61 @@ export const generarReporteDiarioExcel = async ({
       registrosDia[alumno.id] ||
       null;
 
+    const estadoHoy = registroHoy?.status || '';
+    const nombreEstado = estadoHoy
+      ? obtenerNombreEstadoExcel(estadoHoy)
+      : 'SIN REGISTRO';
+
     let tardanzasSemana = 0;
+    let faltasSemana = 0;
+    let permisosSemana = 0;
+    let evasionesSemana = 0;
 
     diasSemana.forEach((dia) => {
       const registro =
         asistenciasPorFecha?.[dia]?.[String(alumno.id)] ||
         asistenciasPorFecha?.[dia]?.[alumno.id];
 
-      if (registro?.status === 'T') {
-        tardanzasSemana += 1;
-      }
+      if (registro?.status === 'T') tardanzasSemana += 1;
+      if (registro?.status === 'F') faltasSemana += 1;
+      if (registro?.status === 'J') permisosSemana += 1;
+      if (registro?.status === 'E') evasionesSemana += 1;
     });
 
-    const accion =
-      tardanzasSemana >= 3
-        ? 'LLAMAR ATENCIÓN'
-        : '';
+    const observaciones = [];
+
+    if (tardanzasSemana > 0) {
+      observaciones.push(
+        `${tardanzasSemana} tardanza${tardanzasSemana === 1 ? '' : 's'}`
+      );
+    }
+
+    if (faltasSemana > 0) {
+      observaciones.push(
+        `${faltasSemana} falta${faltasSemana === 1 ? '' : 's'}`
+      );
+    }
+
+    if (permisosSemana > 0) {
+      observaciones.push(
+        `${permisosSemana} permiso${permisosSemana === 1 ? '' : 's'}`
+      );
+    }
+
+    if (evasionesSemana > 0) {
+      observaciones.push(
+        `${evasionesSemana} evasión${evasionesSemana === 1 ? '' : 'es'}`
+      );
+    }
+
+    const requiereAtencion =
+      tardanzasSemana >= 3 ||
+      faltasSemana >= 3 ||
+      evasionesSemana >= 1;
+
+    const accion = requiereAtencion
+      ? 'LLAMAR ATENCIÓN'
+      : '';
 
     const fila = hoja.addRow([
       indice + 1,
@@ -432,48 +472,76 @@ export const generarReporteDiarioExcel = async ({
       alumno.grade || '',
       alumno.section || '',
       registroHoy?.time || '--:--',
-      tardanzasSemana > 0 ? tardanzasSemana : '',
+      nombreEstado,
+      observaciones.join(' / '),
       accion
     ]);
 
-    fila.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    fila.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
-    fila.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
-    fila.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
-    fila.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
-    fila.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+    fila.getCell(1).alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
 
-    if (tardanzasSemana >= 3) {
-      fila.getCell(7).fill = {
+    fila.getCell(4).alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    fila.getCell(5).alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    fila.getCell(6).alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    fila.getCell(7).alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    // Colores por estado del día.
+    aplicarColorEstadoTexto(
+      fila.getCell(7),
+      estadoHoy
+    );
+
+    // Resaltar observaciones acumuladas.
+    if (
+      tardanzasSemana >= 3 ||
+      faltasSemana >= 3 ||
+      evasionesSemana >= 1
+    ) {
+      fila.getCell(8).fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: COLORES.amarillo }
       };
-      fila.getCell(7).font = {
-        bold: true,
-        color: { argb: COLORES.rojoTexto }
-      };
 
-      fila.getCell(8).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: COLORES.rojo }
-      };
       fila.getCell(8).font = {
         bold: true,
         color: { argb: COLORES.rojoTexto }
       };
-      fila.getCell(8).alignment = {
+    }
+
+    if (requiereAtencion) {
+      fila.getCell(9).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: COLORES.rojo }
+      };
+
+      fila.getCell(9).font = {
+        bold: true,
+        color: { argb: COLORES.rojoTexto }
+      };
+
+      fila.getCell(9).alignment = {
         horizontal: 'center',
         vertical: 'middle'
       };
-    } else if (tardanzasSemana > 0) {
-      fila.getCell(7).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: COLORES.amarillo }
-      };
-      fila.getCell(7).font = { bold: true };
     }
   });
 
@@ -484,85 +552,112 @@ export const generarReporteDiarioExcel = async ({
     { width: 13 },
     { width: 22 },
     { width: 13 },
-    { width: 18 },
+    { width: 16 },
+    { width: 28 },
     { width: 22 }
   ];
 
-  estilizarCabeceraTabla(hoja, filaEncabezado);
+  estilizarCabeceraTabla(
+    hoja,
+    filaEncabezado
+  );
+
   estilizarCuerpo(
     hoja,
     filaEncabezado + 1,
     hoja.rowCount
   );
 
-  // Resaltar de nuevo las alertas después del estilo alternado.
+  // Reaplicar colores de estado y alertas después del estilo alternado.
   for (
     let fila = filaEncabezado + 1;
     fila <= hoja.rowCount;
     fila++
   ) {
-    const tardanzas = Number(
-      hoja.getCell(fila, 7).value || 0
+    const valorEstado = String(
+      hoja.getCell(fila, 7).value || ''
+    ).toUpperCase();
+
+    let codigoEstado = '';
+
+    if (valorEstado === 'PRESENTE') codigoEstado = 'P';
+    if (valorEstado === 'TARDANZA') codigoEstado = 'T';
+    if (valorEstado === 'FALTA') codigoEstado = 'F';
+    if (valorEstado === 'EVASIÓN') codigoEstado = 'E';
+    if (valorEstado === 'PERMISO') codigoEstado = 'J';
+
+    aplicarColorEstadoTexto(
+      hoja.getCell(fila, 7),
+      codigoEstado
     );
 
-    if (tardanzas >= 3) {
-      hoja.getCell(fila, 7).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: COLORES.amarillo }
-      };
+    const accion = String(
+      hoja.getCell(fila, 9).value || ''
+    );
 
-      hoja.getCell(fila, 7).font = {
-        bold: true,
-        color: { argb: COLORES.rojoTexto }
-      };
-
+    if (accion === 'LLAMAR ATENCIÓN') {
       hoja.getCell(fila, 8).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: COLORES.rojo }
+        fgColor: { argb: COLORES.amarillo }
       };
 
       hoja.getCell(fila, 8).font = {
         bold: true,
         color: { argb: COLORES.rojoTexto }
       };
-    } else if (tardanzas > 0) {
-      hoja.getCell(fila, 7).fill = {
+
+      hoja.getCell(fila, 9).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: COLORES.amarillo }
+        fgColor: { argb: COLORES.rojo }
       };
-      hoja.getCell(fila, 7).font = { bold: true };
+
+      hoja.getCell(fila, 9).font = {
+        bold: true,
+        color: { argb: COLORES.rojoTexto }
+      };
     }
   }
 
-  // Nota para que Dirección sepa qué representa Observaciones.
   const filaNota = hoja.rowCount + 2;
-  hoja.mergeCells(filaNota, 1, filaNota, encabezados.length);
+
+  hoja.mergeCells(
+    filaNota,
+    1,
+    filaNota,
+    encabezados.length
+  );
+
   hoja.getCell(filaNota, 1).value =
-    'OBSERVACIONES = cantidad de tardanzas acumuladas en la semana. Con 3 o más tardanzas: LLAMAR ATENCIÓN.';
+    'ESTADO = situación del estudiante en el día. OBSERVACIONES = acumulado semanal de tardanzas, faltas, permisos y evasiones.';
+
   hoja.getCell(filaNota, 1).font = {
     italic: true,
     size: 10,
     color: { argb: COLORES.textoOscuro }
   };
+
   hoja.getCell(filaNota, 1).fill = {
     type: 'pattern',
     pattern: 'solid',
     fgColor: { argb: COLORES.azulClaro }
   };
+
   hoja.getCell(filaNota, 1).alignment = {
     vertical: 'middle',
     wrapText: true
   };
+
   hoja.getRow(filaNota).height = 28;
 
   configurarHoja({
     hoja,
     filaEncabezado,
-    ultimaFila: filaEncabezado + estudiantes.length,
-    ultimaColumna: encabezados.length,
+    ultimaFila:
+      filaEncabezado + estudiantes.length,
+    ultimaColumna:
+      encabezados.length,
     orientacion: 'landscape'
   });
 
