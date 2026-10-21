@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  AlertTriangle, Check, CheckCircle2, Clock, MessageCircle, Phone,
+  AlertTriangle, Check, CheckCircle2, Clock, FileText, MessageCircle, Phone,
   School, Search, ShieldAlert, X, XCircle
 } from 'lucide-react';
 import { obtenerNombreEstado } from '../../utils/estados';
