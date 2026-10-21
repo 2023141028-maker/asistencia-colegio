@@ -1337,7 +1337,6 @@ export default function App() {
             guardadoExitoso,
             mensajeGuardado,
             guardarAsistenciaAula,
-            evadieronHoyLista,
             enviarWhatsApp
           }}
         />
