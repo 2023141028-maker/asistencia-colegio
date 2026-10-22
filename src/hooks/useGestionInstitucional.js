@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { persistirUsuariosSeguros } from '../utils/seguridad';
 import { supabase } from '../supabase';
 import { conLimiteDeTiempo } from '../utils/async';
 import { cargarLibreriaExcel } from '../utils/excel';
@@ -69,7 +70,7 @@ export default function useGestionInstitucional({
 
     const nuevosUsuarios = [...usuarios, nuevo];
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v26', JSON.stringify(nuevosUsuarios));
+    persistirUsuariosSeguros(nuevosUsuarios);
 
     setNuevoNombreDocente('');
     setNuevoUserDocente('');
@@ -92,7 +93,7 @@ export default function useGestionInstitucional({
     if (window.confirm('¿Desea revocar el acceso a este usuario?')) {
       const restantes = usuarios.filter(u => u.id !== id);
       setUsuarios(restantes);
-      localStorage.setItem('dh_usuarios_v26', JSON.stringify(restantes));
+      persistirUsuariosSeguros(restantes);
       try {
         await eliminarUsuario(id);
       } catch (e) {}
@@ -155,7 +156,7 @@ export default function useGestionInstitucional({
 
     const nuevosUsuarios = usuarios.map(u => u.id === personalEditando.id ? personalActualizado : u);
     setUsuarios(nuevosUsuarios);
-    localStorage.setItem('dh_usuarios_v26', JSON.stringify(nuevosUsuarios));
+    persistirUsuariosSeguros(nuevosUsuarios);
 
     try {
       await actualizarUsuario(personalActualizado);
