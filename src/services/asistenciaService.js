@@ -19,7 +19,13 @@ export const guardarAsistenciaDocente = async ({
 
   for (const alumno of alumnos) {
     const estudianteId = String(alumno.id);
-    const estadoDocente = estados[alumno.id] || 'P';
+    const estadoDocente = estados[alumno.id];
+
+    // El módulo docente es opcional. Si el docente no marcó al alumno,
+    // no se crea ningún registro docente ni se asume que está presente.
+    if (!['P', 'T', 'F', 'E', 'J'].includes(estadoDocente)) {
+      continue;
+    }
 
     const { data, error } = await conLimiteDeTiempo(
       supabase
