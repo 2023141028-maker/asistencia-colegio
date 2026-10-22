@@ -142,7 +142,7 @@ export default function PanelGestion({ ctx }) {
                             nuevoRolPersonal === 'docente' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
                           }`}
                         >
-                          <Users className="w-3.5 h-3.5" /> Docente de Aula
+                          <Users className="w-3.5 h-3.5" /> Docente (Opcional)
                         </button>
                       
                     <button
@@ -156,6 +156,12 @@ export default function PanelGestion({ ctx }) {
                     </button>
 </div>
                     </div>
+
+                    {nuevoRolPersonal === 'docente' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-[10px] text-blue-800">
+                        El acceso docente es opcional. Su registro funciona como verificación complementaria y no reemplaza la asistencia oficial de Dirección/Auxiliares/QR.
+                      </div>
+                    )}
 
                     <input
                       type="text"
@@ -499,6 +505,12 @@ export default function PanelGestion({ ctx }) {
                     </button>
 </div>
                 </div>
+
+                {editRolPersonal === 'docente' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-[10px] text-blue-800">
+                    Rol opcional: la verificación docente no modifica la asistencia oficial registrada por Dirección/Auxiliares/QR.
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Nombre Completo y Área</label>
