@@ -80,9 +80,9 @@ const useAsistenciasRealtime = ({
                 registro.registrado_docente_por || '',
 
               time:
-                registro.created_at
+                (registro.actualizado_at || registro.created_at)
                   ? new Date(
-                      registro.created_at
+                      registro.actualizado_at || registro.created_at
                     ).toLocaleTimeString(
                       [],
                       {
