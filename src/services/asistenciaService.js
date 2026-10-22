@@ -212,8 +212,18 @@ export const guardarAsistenciaOficial = async (
 export const guardarAsistenciasOficiales = async (
   filas = []
 ) => {
-  for (const fila of filas) {
-    await guardarAsistenciaOficial(fila);
+  // Sincroniza por pequeños lotes para no hacer esperar un salón completo
+  // registro por registro, sin saturar la conexión del teléfono.
+  const TAMANO_LOTE = 6;
+
+  for (let i = 0; i < filas.length; i += TAMANO_LOTE) {
+    const lote = filas.slice(i, i + TAMANO_LOTE);
+
+    await Promise.all(
+      lote.map((fila) =>
+        guardarAsistenciaOficial(fila)
+      )
+    );
   }
 
   return true;
