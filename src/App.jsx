@@ -255,8 +255,19 @@ export default function App() {
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(() => {
     try {
       const sesion = localStorage.getItem('dh_sesion_v26');
-      return sesion ? JSON.parse(sesion) : null;
+
+      if (!sesion) {
+        return null;
+      }
+
+      const usuarioGuardado = JSON.parse(sesion);
+      const usuarioSeguro = usuarioParaSesion(usuarioGuardado);
+
+      persistirSesionSegura(usuarioGuardado);
+
+      return usuarioSeguro;
     } catch {
+      localStorage.removeItem('dh_sesion_v26');
       return null;
     }
   });
