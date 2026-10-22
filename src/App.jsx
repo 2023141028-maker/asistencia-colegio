@@ -445,7 +445,7 @@ export default function App() {
         : '';
 
     inicial[e.id] = esDocente
-      ? (registro?.docenteStatus || estadoDireccionReal || '')
+      ? (registro?.docenteStatus || '')
       : estadoDireccionReal;
   });
 
@@ -573,6 +573,17 @@ export default function App() {
       const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const seccionCompleta = `${gradoSel} - ${seccionSel}`;
       if (esDocente) {
+            const cantidadMarcadosDocente = alumnosAula.filter(
+              alumno => ['P', 'T', 'F', 'E', 'J'].includes(asistenciaAula[alumno.id])
+            ).length;
+
+            if (cantidadMarcadosDocente === 0) {
+              alert(
+                'El registro docente es opcional. Marca al menos un estudiante si deseas guardar una verificación docente.'
+              );
+              return;
+            }
+
             if (!navigator.onLine) {
                 let colaActual = [];
 
