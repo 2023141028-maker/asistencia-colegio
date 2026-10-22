@@ -180,8 +180,8 @@ export default function App() {
                   docenteStatus: reg.estado_docente || null,
                   registradoPor: reg.registrado_por || '',
                   registradoDocentePor: reg.registrado_docente_por || '',
-                  time: (reg.actualizado_at || reg.actualizado_docente_at || reg.created_at)
-                    ? new Date(reg.actualizado_at || reg.actualizado_docente_at || reg.created_at).toLocaleTimeString([], {
+                  time: (reg.actualizado_at || reg.created_at)
+                    ? new Date(reg.actualizado_at || reg.created_at).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
                       })
