@@ -2,7 +2,7 @@ import useAsistenciasRealtime from './hooks/useAsistenciasRealtime';
 import useReportes from './hooks/useReportes';
 import useGestionInstitucional from './hooks/useGestionInstitucional';
 import { supabase } from './supabase';
-import {guardarAsistenciaDocente, registrarIngresoQR} from './services/asistenciaService';
+import { guardarAsistenciaDocente, guardarAsistenciaOficial, registrarIngresoQR } from './services/asistenciaService';
 import EscanerQR from './components/EscanerQR';
 import PanelReportes from './components/reportes/PanelReportes';
 import PanelGestion from './components/usuarios/PanelGestion';
@@ -66,79 +66,35 @@ export default function App() {
           });
     
         } else if (item.tipo === 'aula') {
-
-  for (const fila of item.filas) {
-
-    const { data, error } = await conLimiteDeTiempo(
-      supabase
-        .from('asistencias')
-        .update({
-          estudiante_nombre: fila.estudiante_nombre,
-          seccion: fila.seccion,
-          estado: fila.estado,
-          registrado_por: fila.registrado_por
-        })
-        .eq('fecha', fila.fecha)
-        .eq('estudiante_id', fila.estudiante_id)
-        .select('id'),
-      3000
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data || data.length === 0) {
-
-      const { error: errorInsert } = await conLimiteDeTiempo(
-        supabase
-          .from('asistencias')
-          .insert([fila]),
-        3000
-      );
-
-      if (errorInsert) {
-        throw errorInsert;
-      }
-    }
-  }
-        } else if (item.tipo === 'alumno_individual') {
-
-            const fila = item.filas[0];
-          
-            const { data, error } = await conLimiteDeTiempo(
-              supabase
-                .from('asistencias')
-                .update({
-                  estudiante_nombre: fila.estudiante_nombre,
-                  seccion: fila.seccion,
-                  estado: fila.estado,
-                  registrado_por: fila.registrado_por
-                })
-                .eq('fecha', item.fecha)
-                .eq('estudiante_id', item.estudiante_id)
-                .select('id'),
-              3000
+          for (const fila of item.filas) {
+            await conLimiteDeTiempo(
+              guardarAsistenciaOficial({
+                fecha: fila.fecha,
+                estudianteId: fila.estudiante_id,
+                estudianteNombre: fila.estudiante_nombre,
+                seccion: fila.seccion,
+                estado: fila.estado,
+                registradoPor: fila.registrado_por
+              }),
+              3500
             );
-          
-            if (error) {
-              throw error;
-            }
-          
-            if (!data || data.length === 0) {
-          
-              const { error: errorInsert } = await conLimiteDeTiempo(
-                supabase
-                  .from('asistencias')
-                  .insert(item.filas),
-                3000
-              );
-          
-              if (errorInsert) {
-                throw errorInsert;
-              }
-            }
           }
+        } else if (item.tipo === 'alumno_individual') {
+          const fila = item.filas[0];
+
+          await conLimiteDeTiempo(
+            guardarAsistenciaOficial({
+              fecha: fila.fecha,
+              estudianteId: fila.estudiante_id,
+              estudianteNombre: fila.estudiante_nombre,
+              seccion: fila.seccion,
+              estado: fila.estado,
+              registradoPor: fila.registrado_por
+            }),
+            3500
+          );
+        }
+
         subidosConExito++;
       } catch (err) {
         fallidos.push(item);
@@ -240,12 +196,12 @@ export default function App() {
                   docenteStatus: reg.estado_docente || null,
                   registradoPor: reg.registrado_por || '',
                   registradoDocentePor: reg.registrado_docente_por || '',
-                  time: reg.created_at
-                    ? new Date(reg.created_at).toLocaleTimeString([], {
+                  time: (reg.actualizado_at || reg.created_at)
+                    ? new Date(reg.actualizado_at || reg.created_at).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
                       })
-                    : '08:00'
+                    : '--:--'
                 };
               });
             setAsistencias(prev => ({ ...prev, ...agrupadas }));
@@ -521,40 +477,32 @@ export default function App() {
     }
 
     conLimiteDeTiempo(
-      supabase
-        .from('asistencias')
-        .update({
-          estudiante_nombre: fila[0].estudiante_nombre,
-          seccion: fila[0].seccion,
-          estado: fila[0].estado,
-          registrado_por: fila[0].registrado_por
-        })
-        .eq('fecha', fechaHoy)
-        .eq('estudiante_id', String(alumnoId))
-        .select('id'),
-      2000
-    ).then(({ data, error }) => {
-    
-      if (error) {
-        throw error;
-      }
-    
-      if (!data || data.length === 0) {
-        return conLimiteDeTiempo(
-          supabase.from('asistencias').insert(fila),
-          2000
-        );
-      }
-    
-      return null;
-    
-    }).catch(() => {
+      guardarAsistenciaOficial({
+        fecha: fechaHoy,
+        estudianteId: alumnoId,
+        estudianteNombre: alum.name,
+        seccion: `${alum.grade} - ${alum.section}`,
+        estado: nuevoEstado,
+        registradoPor: usuarioAutenticado?.nombre || 'Dirección/Auxiliar'
+      }),
+      3500
+    ).catch(() => {
       let colaActual = [];
-      try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
-      const nuevaCola = [...colaActual.filter(p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))), paquete];
+      try {
+        colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]');
+      } catch {}
+
+      const nuevaCola = [
+        ...colaActual.filter(
+          p => !(p.fecha === fechaHoy && p.estudiante_id === String(alumnoId))
+        ),
+        paquete
+      ];
+
       setColaPendientes(nuevaCola);
       localStorage.setItem('dh_cola_offline_v26', JSON.stringify(nuevaCola));
     });
+;
   };
 
   const alternarEstadoAlumno = (id) => {
@@ -725,40 +673,18 @@ export default function App() {
 
     try {
       for (const fila of filas) {
-
-  const { data, error } = await conLimiteDeTiempo(
-    supabase
-      .from('asistencias')
-      .update({
-        estudiante_nombre: fila.estudiante_nombre,
-        seccion: fila.seccion,
-        estado: fila.estado,
-        registrado_por: fila.registrado_por
-      })
-      .eq('fecha', fila.fecha)
-      .eq('estudiante_id', fila.estudiante_id)
-      .select('id'),
-    3000
-  );
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data || data.length === 0) {
-
-    const { error: errorInsert } = await conLimiteDeTiempo(
-      supabase
-        .from('asistencias')
-        .insert([fila]),
-      3000
-    );
-
-    if (errorInsert) {
-      throw errorInsert;
-    }
-  }
-}
+        await conLimiteDeTiempo(
+          guardarAsistenciaOficial({
+            fecha: fila.fecha,
+            estudianteId: fila.estudiante_id,
+            estudianteNombre: fila.estudiante_nombre,
+            seccion: fila.seccion,
+            estado: fila.estado,
+            registradoPor: fila.registrado_por
+          }),
+          3500
+        );
+      }
 
       let colaActual = [];
       try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
