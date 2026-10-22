@@ -438,10 +438,18 @@ export const generarReporteDiarioExcel = async ({
         asistenciasPorFecha?.[dia]?.[String(alumno.id)] ||
         asistenciasPorFecha?.[dia]?.[alumno.id];
 
-      if (registro?.status === 'T') tardanzasSemana += 1;
-      if (registro?.status === 'F') faltasSemana += 1;
-      if (registro?.status === 'J') permisosSemana += 1;
-      if (registro?.status === 'E') evasionesSemana += 1;
+      const esRegistroOficial =
+        registro?.status &&
+        registro?.registradoPor !== 'Sistema - sin control previo';
+
+      if (!esRegistroOficial) {
+        return;
+      }
+
+      if (registro.status === 'T') tardanzasSemana += 1;
+      if (registro.status === 'F') faltasSemana += 1;
+      if (registro.status === 'J') permisosSemana += 1;
+      if (registro.status === 'E') evasionesSemana += 1;
     });
 
     const observaciones = [];
