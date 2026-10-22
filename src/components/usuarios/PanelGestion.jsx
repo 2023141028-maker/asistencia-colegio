@@ -491,7 +491,7 @@ export default function PanelGestion({ ctx }) {
                         editRolPersonal === 'docente' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-300'
                       }`}
                     >
-                      <Users className="w-3.5 h-3.5" /> Docente de Aula
+                      <Users className="w-3.5 h-3.5" /> Docente (Opcional)
                     </button>
                   
                     <button
