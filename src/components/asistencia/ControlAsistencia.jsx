@@ -188,7 +188,7 @@ export default function ControlAsistencia({ ctx }) {
               </div>
             </div>
             
-            {/* DIFERENCIAS ENTRE DIRECCIÓN Y DOCENTE */}
+            {/* COMPARACIÓN OPCIONAL CON REGISTROS DOCENTES */}
             {esDireccion && discrepanciasDirector.length > 0 && (
               <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 shadow-sm">
             
@@ -197,11 +197,11 @@ export default function ControlAsistencia({ ctx }) {
             
                   <div>
                     <h3 className="text-sm font-black text-amber-900">
-                      Registros que requieren revisión
+                      Comparación opcional con docente
                     </h3>
             
                     <p className="text-[11px] text-amber-700 font-semibold">
-                      {discrepanciasDirector.length} diferencia(s) entre Dirección y Docente
+                      {discrepanciasDirector.length} diferencia(s) informativa(s). La asistencia oficial es la registrada por Dirección/Auxiliares/QR.
                     </p>
                   </div>
                 </div>
