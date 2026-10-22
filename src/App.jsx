@@ -53,50 +53,84 @@ export default function App() {
 
   const sincronizarColaConSupabase = useCallback(async () => {
     let colaActual = [];
+
     try {
-      colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]');
+      colaActual = JSON.parse(
+        localStorage.getItem('dh_cola_offline_v26') || '[]'
+      );
     } catch {
       colaActual = [];
     }
 
-    if (colaActual.length === 0) return;
+    if (colaActual.length === 0) {
+      setColaPendientes([]);
+      setSincronizando(false);
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setAvisoSync('Sin Internet. La asistencia seguirá guardada en este teléfono.');
+      setTimeout(() => setAvisoSync(''), 4500);
+      return;
+    }
 
     setSincronizando(true);
+    setAvisoSync('');
+
     let subidosConExito = 0;
     const fallidos = [];
 
-    for (const item of colaActual) {
-      try {
-        if (item.tipo === 'aula_docente') {
-          await guardarAsistenciaDocente({
-            fecha: item.fecha,
-            alumnos: item.alumnos,
-            estados: item.estados,
-            seccion: item.seccion,
-            nombreDocente: item.nombreDocente || 'Docente'
-          });
-    
-        } else if (item.tipo === 'aula') {
-          await guardarAsistenciasOficiales(item.filas || []);
-        } else if (item.tipo === 'alumno_individual') {
-          const fila = item.filas[0];
+    try {
+      for (const item of colaActual) {
+        try {
+          if (item.tipo === 'aula_docente') {
+            await guardarAsistenciaDocente({
+              fecha: item.fecha,
+              alumnos: item.alumnos,
+              estados: item.estados,
+              seccion: item.seccion,
+              nombreDocente: item.nombreDocente || 'Docente'
+            });
+          } else if (item.tipo === 'aula') {
+            await guardarAsistenciasOficiales(item.filas || []);
+          } else if (item.tipo === 'alumno_individual') {
+            const fila = item.filas?.[0];
 
-          await guardarAsistenciaOficial(fila);
+            if (!fila) {
+              throw new Error('REGISTRO_LOCAL_INVALIDO');
+            }
+
+            await guardarAsistenciaOficial(fila);
+          } else {
+            throw new Error('TIPO_COLA_NO_RECONOCIDO');
+          }
+
+          subidosConExito++;
+        } catch (err) {
+          console.error('Error sincronizando asistencia pendiente:', err);
+          fallidos.push(item);
         }
-
-        subidosConExito++;
-      } catch (err) {
-        fallidos.push(item);
       }
-    }
 
-    setColaPendientes(fallidos);
-    localStorage.setItem('dh_cola_offline_v26', JSON.stringify(fallidos));
-    setSincronizando(false);
+      setColaPendientes(fallidos);
+      localStorage.setItem(
+        'dh_cola_offline_v26',
+        JSON.stringify(fallidos)
+      );
 
-    if (subidosConExito > 0) {
-      setAvisoSync(`¡Conexión lista! Se sincronizaron ${subidosConExito} registro(s) con la nube.`);
-      setTimeout(() => setAvisoSync(''), 4500);
+      if (fallidos.length === 0) {
+        setAvisoSync(
+          `✅ Sincronización completa. Se subieron ${subidosConExito} pendiente(s) a la nube.`
+        );
+      } else {
+        setAvisoSync(
+          `⚠️ Se subieron ${subidosConExito}; quedan ${fallidos.length} pendiente(s). Revisa Internet e inténtalo otra vez.`
+        );
+      }
+
+      setTimeout(() => setAvisoSync(''), 5000);
+    } finally {
+      setSincronizando(false);
     }
   }, []);
 
@@ -1138,7 +1172,7 @@ export default function App() {
         <div className="bg-amber-600 text-white px-3 py-2 text-xs font-black flex items-center justify-between shadow sticky top-0 z-50 animate-pulse">
           <div className="flex items-center gap-1.5 truncate">
             <Smartphone className="w-4 h-4 text-amber-200 shrink-0" />
-            <span className="truncate">Tienes {colaPendientes.length} asistencia(s) en este teléfono</span>
+            <span className="truncate">Tienes {colaPendientes.length} pendiente(s) guardado(s) en este teléfono</span>
           </div>
           <button
             onClick={sincronizarColaConSupabase}
