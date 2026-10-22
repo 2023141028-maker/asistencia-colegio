@@ -43,6 +43,13 @@ export default function ControlAsistencia({ ctx }) {
         {((esDireccion && vistaDirector === 'asistencia') || esDocente || (esAuxiliar && subVistaAuxiliar === 'salones')) && (
           <div className="space-y-3.5">
             
+            {esDocente && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 text-[11px] text-blue-800">
+                <b>Verificación docente opcional:</b> la asistencia oficial es la registrada por Dirección, Auxiliares o QR.
+                Aquí puedes registrar una verificación adicional solo cuando sea necesario.
+              </div>
+            )}
+
             {/* BUSCADOR UNIVERSAL DIRECTO DEL DIRECTOR (AUTO-GUARDADO) */}
             {esDireccion && (
               <div className="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-emerald-500">
@@ -374,6 +381,21 @@ export default function ControlAsistencia({ ctx }) {
                           <p className="text-[10px] text-slate-500 mt-0.5 truncate">
                             {alumno.dni && alumno.dni !== 'S/D' ? `DNI: ${alumno.dni} • ` : ''}Apod: {alumno.phone}
                           </p>
+
+                          {esDocente && (() => {
+                            const registroOficial = asistencias[fechaHoy]?.[alumno.id];
+                            const tieneRegistroOficial =
+                              registroOficial?.status &&
+                              registroOficial?.registradoPor !== 'Sistema - sin control previo';
+
+                            return (
+                              <p className="text-[10px] mt-0.5 font-bold text-blue-700">
+                                Estado oficial: {tieneRegistroOficial
+                                  ? obtenerNombreEstado(registroOficial.status)
+                                  : 'SIN REGISTRO'}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -429,7 +451,11 @@ export default function ControlAsistencia({ ctx }) {
                   ) : (
                     <>
                       <CheckCircle2 className="w-6 h-6 shrink-0" /> 
-                      <span className="truncate">Guardar Salón Completo ({seccionSel})</span>
+                      <span className="truncate">
+                        {esDocente
+                          ? `Guardar Verificación Docente (${seccionSel})`
+                          : `Guardar Salón Completo (${seccionSel})`}
+                      </span>
                     </>
                   )}
                 </button>
