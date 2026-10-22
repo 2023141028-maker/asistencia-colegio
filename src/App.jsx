@@ -2,7 +2,12 @@ import useAsistenciasRealtime from './hooks/useAsistenciasRealtime';
 import useReportes from './hooks/useReportes';
 import useGestionInstitucional from './hooks/useGestionInstitucional';
 import { supabase } from './supabase';
-import { guardarAsistenciaDocente, guardarAsistenciaOficial, registrarIngresoQR } from './services/asistenciaService';
+import {
+  guardarAsistenciaDocente,
+  guardarAsistenciaOficial,
+  guardarAsistenciasOficiales,
+  registrarIngresoQR
+} from './services/asistenciaService';
 import EscanerQR from './components/EscanerQR';
 import PanelReportes from './components/reportes/PanelReportes';
 import PanelGestion from './components/usuarios/PanelGestion';
@@ -17,6 +22,12 @@ import {
 } from './utils/permisos';
 import { AULAS_OFICIALES_DH } from './constants/aulas';
 import { conLimiteDeTiempo } from './utils/async';
+import {
+  leerUsuariosSeguros,
+  persistirSesionSegura,
+  persistirUsuariosSeguros,
+  usuarioParaSesion
+} from './utils/seguridad';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, CheckCircle2, Clock, AlertTriangle, MessageCircle, Calendar, School, FileSpreadsheet, Lock, LogOut, UserCheck, Eye, EyeOff, HelpCircle, X, Upload, WifiOff, Smartphone, Sparkles, KeyRound, Loader2, Settings
@@ -66,33 +77,11 @@ export default function App() {
           });
     
         } else if (item.tipo === 'aula') {
-          for (const fila of item.filas) {
-            await conLimiteDeTiempo(
-              guardarAsistenciaOficial({
-                fecha: fila.fecha,
-                estudianteId: fila.estudiante_id,
-                estudianteNombre: fila.estudiante_nombre,
-                seccion: fila.seccion,
-                estado: fila.estado,
-                registradoPor: fila.registrado_por
-              }),
-              3500
-            );
-          }
+          await guardarAsistenciasOficiales(item.filas || []);
         } else if (item.tipo === 'alumno_individual') {
           const fila = item.filas[0];
 
-          await conLimiteDeTiempo(
-            guardarAsistenciaOficial({
-              fecha: fila.fecha,
-              estudianteId: fila.estudiante_id,
-              estudianteNombre: fila.estudiante_nombre,
-              seccion: fila.seccion,
-              estado: fila.estado,
-              registradoPor: fila.registrado_por
-            }),
-            3500
-          );
+          await guardarAsistenciaOficial(fila);
         }
 
         subidosConExito++;
@@ -128,14 +117,9 @@ export default function App() {
   }, [sincronizarColaConSupabase]);
 
   // USUARIOS
-  const [usuarios, setUsuarios] = useState(() => {
-    try {
-      const local = localStorage.getItem('dh_usuarios_v26');
-      return local ? JSON.parse(local) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [usuarios, setUsuarios] = useState(() =>
+    leerUsuariosSeguros()
+  );
 
   // ESTUDIANTES
   const [estudiantes, setEstudiantes] = useState(() => {
@@ -177,7 +161,7 @@ export default function App() {
               aulasAsignadas: u.aulas_asignadas || []
             }));
             setUsuarios(formateados);
-            localStorage.setItem('dh_usuarios_v26', JSON.stringify(formateados));
+            persistirUsuariosSeguros(formateados);
           }
 
           const resEst = await conLimiteDeTiempo(supabase.from('estudiantes').select('*'), 2000).catch(() => null);
@@ -196,8 +180,8 @@ export default function App() {
                   docenteStatus: reg.estado_docente || null,
                   registradoPor: reg.registrado_por || '',
                   registradoDocentePor: reg.registrado_docente_por || '',
-                  time: (reg.actualizado_at || reg.created_at)
-                    ? new Date(reg.actualizado_at || reg.created_at).toLocaleTimeString([], {
+                  time: (reg.actualizado_at || reg.actualizado_docente_at || reg.created_at)
+                    ? new Date(reg.actualizado_at || reg.actualizado_docente_at || reg.created_at).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
                       })
@@ -251,9 +235,9 @@ export default function App() {
     };
 
     setUsuarios([directorNuevo]);
-    setUsuarioAutenticado(directorNuevo);
-    localStorage.setItem('dh_usuarios_v26', JSON.stringify([directorNuevo]));
-    localStorage.setItem('dh_sesion_v26', JSON.stringify(directorNuevo));
+    setUsuarioAutenticado(usuarioParaSesion(directorNuevo));
+    persistirUsuariosSeguros([directorNuevo]);
+    persistirSesionSegura(directorNuevo);
 
     try {
       await conLimiteDeTiempo(
@@ -298,10 +282,15 @@ export default function App() {
     );
 
     if (encontrado) {
-      setUsuarioAutenticado(encontrado);
+      const sesionSegura = usuarioParaSesion(encontrado);
+      setUsuarioAutenticado(sesionSegura);
+
       if (recordarSesion) {
-        localStorage.setItem('dh_sesion_v26', JSON.stringify(encontrado));
+        persistirSesionSegura(encontrado);
+      } else {
+        localStorage.removeItem('dh_sesion_v26');
       }
+
       setErrorLogin('');
       setInputClave('');
     } else {
@@ -476,17 +465,7 @@ export default function App() {
       return;
     }
 
-    conLimiteDeTiempo(
-      guardarAsistenciaOficial({
-        fecha: fechaHoy,
-        estudianteId: alumnoId,
-        estudianteNombre: alum.name,
-        seccion: `${alum.grade} - ${alum.section}`,
-        estado: nuevoEstado,
-        registradoPor: usuarioAutenticado?.nombre || 'Dirección/Auxiliar'
-      }),
-      3500
-    ).catch(() => {
+    guardarAsistenciaOficial(fila[0]).catch(() => {
       let colaActual = [];
       try {
         colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]');
@@ -672,19 +651,7 @@ export default function App() {
     }
 
     try {
-      for (const fila of filas) {
-        await conLimiteDeTiempo(
-          guardarAsistenciaOficial({
-            fecha: fila.fecha,
-            estudianteId: fila.estudiante_id,
-            estudianteNombre: fila.estudiante_nombre,
-            seccion: fila.seccion,
-            estado: fila.estado,
-            registradoPor: fila.registrado_por
-          }),
-          3500
-        );
-      }
+      await guardarAsistenciasOficiales(filas);
 
       let colaActual = [];
       try { colaActual = JSON.parse(localStorage.getItem('dh_cola_offline_v26') || '[]'); } catch {}
